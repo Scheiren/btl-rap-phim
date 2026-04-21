@@ -60,14 +60,21 @@ CREATE TABLE Ghe (
 );
 
 -- =====================================================
--- 5. BẢNG PHIM
+-- 5. BẢNG THỂ LOẠI
+-- =====================================================
+CREATE TABLE TheLoai (
+    MaTheLoai       NVARCHAR(10)    NOT NULL PRIMARY KEY,
+    TenTheLoai      NVARCHAR(100)   NOT NULL UNIQUE
+);
+
+-- =====================================================
+-- 6. BẢNG PHIM
 -- =====================================================
 CREATE TABLE Phim (
     MaPhim          NVARCHAR(10)    NOT NULL PRIMARY KEY,
     TenPhim         NVARCHAR(200)   NOT NULL,
     DaoDien         NVARCHAR(150)   NOT NULL,
     QuocGia         NVARCHAR(100)   NOT NULL,
-    TheLoai         NVARCHAR(100)   NOT NULL,
     ThoiLuong       INT             NOT NULL,   -- phút
     NgayKhoiChieu   DATE            NOT NULL,
     MoTa            NVARCHAR(MAX)   NULL,
@@ -75,7 +82,18 @@ CREATE TABLE Phim (
 );
 
 -- =====================================================
--- 6. BẢNG SUẤT CHIẾU
+-- 7. BẢNG PHIM - THỂ LOẠI (Many-to-Many)
+-- =====================================================
+CREATE TABLE Phim_TheLoai (
+    MaPhim          NVARCHAR(10)    NOT NULL,
+    MaTheLoai       NVARCHAR(10)    NOT NULL,
+    PRIMARY KEY (MaPhim, MaTheLoai),
+    FOREIGN KEY (MaPhim)    REFERENCES Phim(MaPhim),
+    FOREIGN KEY (MaTheLoai) REFERENCES TheLoai(MaTheLoai)
+);
+
+-- =====================================================
+-- 8. BẢNG SUẤT CHIẾU
 -- =====================================================
 CREATE TABLE SuatChieu (
     MaSchieu    NVARCHAR(10)    NOT NULL PRIMARY KEY,
@@ -83,14 +101,13 @@ CREATE TABLE SuatChieu (
     MaPhong     NVARCHAR(10)    NOT NULL,
     NgayChieu   DATE            NOT NULL,
     ThoiGianBd  TIME            NOT NULL,
-    ThoiGianKt  TIME            NOT NULL,
     HeSoGia     DECIMAL(5,2)    NOT NULL DEFAULT 1.0,
     FOREIGN KEY (MaPhim)    REFERENCES Phim(MaPhim),
     FOREIGN KEY (MaPhong)   REFERENCES Phong(MaPhong)
 );
 
 -- =====================================================
--- 7. BẢNG KHÁCH HÀNG
+-- 9. BẢNG KHÁCH HÀNG
 -- =====================================================
 CREATE TABLE KhachHang (
     MaKH        NVARCHAR(10)    NOT NULL PRIMARY KEY,
@@ -101,7 +118,7 @@ CREATE TABLE KhachHang (
 );
 
 -- =====================================================
--- 8. BẢNG VÉ
+-- 10. BẢNG VÉ
 -- =====================================================
 CREATE TABLE Ve (
     MaVe        NVARCHAR(10)    NOT NULL PRIMARY KEY,
@@ -124,6 +141,8 @@ CREATE TABLE Ve (
 CREATE INDEX IX_RapChieuPhim_MaTP    ON RapChieuPhim(MaTP);
 CREATE INDEX IX_Phong_MaRap          ON Phong(MaRap);
 CREATE INDEX IX_Ghe_MaPhong          ON Ghe(MaPhong);
+CREATE INDEX IX_Phim_TheLoai_MaPhim ON Phim_TheLoai(MaPhim);
+CREATE INDEX IX_Phim_TheLoai_TL     ON Phim_TheLoai(MaTheLoai);
 CREATE INDEX IX_SuatChieu_MaPhim     ON SuatChieu(MaPhim);
 CREATE INDEX IX_SuatChieu_MaPhong    ON SuatChieu(MaPhong);
 CREATE INDEX IX_SuatChieu_NgayChieu  ON SuatChieu(NgayChieu);
@@ -204,35 +223,57 @@ CLOSE phong_cursor;
 DEALLOCATE phong_cursor;
 GO
 
+-- Thể loại
+INSERT INTO TheLoai VALUES
+('TL01', N'Hành động'),
+('TL02', N'Viễn tưởng'),
+('TL03', N'Khoa học viễn tưởng'),
+('TL04', N'Tâm lý'),
+('TL05', N'Hoạt hình'),
+('TL06', N'Gia đình'),
+('TL07', N'Hài'),
+('TL08', N'Lịch sử'),
+('TL09', N'Tiểu sử'),
+('TL10', N'Drama');
+
 -- Phim
 INSERT INTO Phim VALUES
-('PM01', N'Avengers: Secret Wars', N'Russo Brothers', N'Mỹ', N'Hành động / Viễn tưởng', 180, '2026-05-01',
+('PM01', N'Avengers: Secret Wars', N'Russo Brothers', N'Mỹ', 180, '2026-05-01',
  N'Cuộc chiến cuối cùng của các siêu anh hùng để cứu lấy vũ trụ đa chiều.', NULL),
-('PM02', N'Inception 2', N'Christopher Nolan', N'Mỹ', N'Khoa học viễn tưởng / Tâm lý', 160, '2026-04-15',
+('PM02', N'Inception 2', N'Christopher Nolan', N'Mỹ', 160, '2026-04-15',
  N'Hành trình xâm nhập giấc mơ trở lại với những bí ẩn sâu hơn.', NULL),
-('PM03', N'Doraemon: Nobita và Vương Quốc Rô-bốt', N'Takashi Yamazaki', N'Nhật Bản', N'Hoạt hình / Gia đình', 110, '2026-03-07',
+('PM03', N'Doraemon: Nobita và Vương Quốc Rô-bốt', N'Takashi Yamazaki', N'Nhật Bản', 110, '2026-03-07',
  N'Doraemon và Nobita phiêu lưu đến vương quốc của những chú rô-bốt thần kỳ.', NULL),
-('PM04', N'Kẻ Trộm Mặt Trăng', N'Bảo Nhân', N'Việt Nam', N'Hành động / Hài', 120, '2026-04-30',
+('PM04', N'Kẻ Trộm Mặt Trăng', N'Bảo Nhân', N'Việt Nam', 120, '2026-04-30',
  N'Bộ phim hành động hài hước thuần Việt về một tên trộm bất đắc dĩ.', NULL),
-('PM05', N'Oppenheimer 2', N'Christopher Nolan', N'Mỹ / Anh', N'Lịch sử / Tiểu sử', 200, '2026-06-20',
+('PM05', N'Oppenheimer 2', N'Christopher Nolan', N'Mỹ / Anh', 200, '2026-06-20',
  N'Tiếp nối hành trình của nhà vật lý học vĩ đại trong thế chiến thứ hai.', NULL),
-('PM06', N'Lật Mặt 8', N'Lý Hải', N'Việt Nam', N'Hành động / Drama', 130, '2026-04-25',
+('PM06', N'Lật Mặt 8', N'Lý Hải', N'Việt Nam', 130, '2026-04-25',
  N'Phần tiếp theo của thương hiệu điện ảnh Việt đình đám Lật Mặt.', NULL);
 
--- Suất chiếu
+-- Phim - Thể loại
+INSERT INTO Phim_TheLoai VALUES
+('PM01', 'TL01'), ('PM01', 'TL02'),
+('PM02', 'TL03'), ('PM02', 'TL04'),
+('PM03', 'TL05'), ('PM03', 'TL06'),
+('PM04', 'TL01'), ('PM04', 'TL07'),
+('PM05', 'TL08'), ('PM05', 'TL09'),
+('PM06', 'TL01'), ('PM06', 'TL10');
+
+-- Suất chiếu (ThoiGianKt được tính = ThoiGianBd + ThoiLuong Phim)
 INSERT INTO SuatChieu VALUES
-('SC001', 'PM01', 'P01', '2026-04-20', '09:00', '12:00', 1.0),
-('SC002', 'PM01', 'P01', '2026-04-20', '14:00', '17:00', 1.0),
-('SC003', 'PM01', 'P02', '2026-04-20', '18:30', '21:30', 1.5),
-('SC004', 'PM02', 'P03', '2026-04-20', '10:00', '12:40', 1.2),
-('SC005', 'PM02', 'P03', '2026-04-20', '15:00', '17:40', 1.2),
-('SC006', 'PM03', 'P04', '2026-04-20', '08:00', '09:50', 1.0),
-('SC007', 'PM04', 'P05', '2026-04-21', '19:00', '21:00', 1.3),
-('SC008', 'PM05', 'P06', '2026-04-21', '20:00', '23:20', 1.8),
-('SC009', 'PM06', 'P07', '2026-04-22', '13:00', '15:10', 1.0),
-('SC010', 'PM01', 'P08', '2026-04-22', '16:00', '19:00', 1.5),
-('SC011', 'PM02', 'P09', '2026-04-22', '09:30', '12:10', 1.0),
-('SC012', 'PM03', 'P01', '2026-04-23', '10:00', '11:50', 1.0);
+('SC001', 'PM01', 'P01', '2026-04-20', '09:00', 1.0),
+('SC002', 'PM01', 'P01', '2026-04-20', '14:00', 1.0),
+('SC003', 'PM01', 'P02', '2026-04-20', '18:30', 1.5),
+('SC004', 'PM02', 'P03', '2026-04-20', '10:00', 1.2),
+('SC005', 'PM02', 'P03', '2026-04-20', '15:00', 1.2),
+('SC006', 'PM03', 'P04', '2026-04-20', '08:00', 1.0),
+('SC007', 'PM04', 'P05', '2026-04-21', '19:00', 1.3),
+('SC008', 'PM05', 'P06', '2026-04-21', '20:00', 1.8),
+('SC009', 'PM06', 'P07', '2026-04-22', '13:00', 1.0),
+('SC010', 'PM01', 'P08', '2026-04-22', '16:00', 1.5),
+('SC011', 'PM02', 'P09', '2026-04-22', '09:30', 1.0),
+('SC012', 'PM03', 'P01', '2026-04-23', '10:00', 1.0);
 
 -- Khách hàng
 INSERT INTO KhachHang VALUES
@@ -294,8 +335,10 @@ CREATE PROCEDURE sp_GheTrongSuatChieu
 AS
 BEGIN
     SELECT sc.MaPhong, g.MaGhe, g.ViTri, g.LoaiGhe,
-        CASE WHEN v.MaVe IS NOT NULL THEN N'Đã đặt' ELSE N'Còn trống' END AS TrangThai
+        CASE WHEN v.MaVe IS NOT NULL THEN N'Đã đặt' ELSE N'Còn trống' END AS TrangThai,
+        DATEADD(MINUTE, pm.ThoiLuong, CAST(sc.ThoiGianBd AS DATETIME)) AS ThoiGianKt
     FROM SuatChieu sc
+    JOIN Phim pm ON pm.MaPhim = sc.MaPhim
     JOIN Ghe g ON g.MaPhong = sc.MaPhong
     LEFT JOIN Ve v ON v.MaSchieu = sc.MaSchieu 
         AND v.MaPhong = g.MaPhong 

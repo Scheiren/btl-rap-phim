@@ -1352,14 +1352,18 @@ async function loadPhim() {
   if (!data?.length) { grid.innerHTML = `<div class="empty-state"><div class="empty-icon">🎬</div><p>Không tìm thấy phim</p></div>`; return; }
   
   grid.innerHTML = data.map(r => {
-    const icon = Object.entries(GENRE_ICONS).find(([k]) => r.TheLoai.includes(k))?.[1] || '🎬';
+    // Lấy tên thể loại từ format "TL01:Tên,TL02:Tên,..."
+    const genreNames = r.TheLoai ? r.TheLoai.split(',').map(tl => tl.split(':')[1]).filter(Boolean) : [];
+    const firstGenre = genreNames[0] || '';
+    const icon = Object.entries(GENRE_ICONS).find(([k]) => firstGenre.includes(k))?.[1] || '🎬';
+    
     return `
     <div class="movie-card" onclick='showMovieDetail(${JSON.stringify(r)})'>
       <div class="movie-poster">${icon}</div>
       <div class="movie-info">
         <div class="movie-title">${r.TenPhim}</div>
         <div class="movie-meta">
-          <span class="movie-genre-badge">${r.TheLoai.split('/')[0].trim()}</span>
+          <span class="movie-genre-badge">${firstGenre}</span>
           <span class="movie-duration">⏱ ${r.ThoiLuong} phút</span>
         </div>
       </div>
@@ -1368,12 +1372,15 @@ async function loadPhim() {
 }
 
 function showMovieDetail(r) {
+  // Lấy tên thể loại từ format "TL01:Tên,TL02:Tên,..."
+  const genreNames = r.TheLoai ? r.TheLoai.split(',').map(tl => tl.split(':')[1]).filter(Boolean).join(', ') : '';
+  
   document.getElementById('modal-movie-title').textContent = r.TenPhim;
   document.getElementById('modal-movie-body').innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px">
       <div><span style="color:var(--muted)">Đạo diễn</span><div style="font-weight:600;margin-top:2px">${r.DaoDien}</div></div>
       <div><span style="color:var(--muted)">Quốc gia</span><div style="font-weight:600;margin-top:2px">${r.QuocGia}</div></div>
-      <div><span style="color:var(--muted)">Thể loại</span><div style="font-weight:600;margin-top:2px">${r.TheLoai}</div></div>
+      <div><span style="color:var(--muted)">Thể loại</span><div style="font-weight:600;margin-top:2px">${genreNames}</div></div>
       <div><span style="color:var(--muted)">Thời lượng</span><div style="font-weight:600;margin-top:2px">${r.ThoiLuong} phút</div></div>
       <div><span style="color:var(--muted)">Khởi chiếu</span><div style="font-weight:600;margin-top:2px">${fmtDate(r.NgayKhoiChieu)}</div></div>
       <div><span style="color:var(--muted)">Số suất</span><div style="font-weight:600;margin-top:2px">${r.SoSuat} suất</div></div>
@@ -1388,6 +1395,24 @@ function showMovieDetail(r) {
 
 function formPhim(data = {}) {
   document.getElementById('modal-form-title').textContent = data.MaPhim ? 'Sửa phim' : 'Thêm phim';
+  
+  // Parse thể loại nếu có (format: "TL01:Tên,TL02:Tên,...")
+  let selectedTheLoai = [];
+  if (data.TheLoai) {
+    selectedTheLoai = data.TheLoai.split(',').map(tl => {
+      const [ma] = tl.split(':');
+      return ma;
+    });
+  }
+  
+  const allTheLoai = window.allTheLoai || [];
+  const genreOptions = allTheLoai.map(tl => 
+    `<div style="display:flex; gap:8px; margin:6px 0;">
+      <input type="checkbox" id="f-TL-${tl.MaTheLoai}" value="${tl.MaTheLoai}" ${selectedTheLoai.includes(tl.MaTheLoai)?'checked':''}>
+      <label for="f-TL-${tl.MaTheLoai}" style="flex:1; cursor:pointer;">${tl.TenTheLoai}</label>
+    </div>`
+  ).join('');
+  
   document.getElementById('modal-form-body').innerHTML = `
     <div class="form-grid">
       <div class="form-group"><label class="form-label">Mã phim *</label>
@@ -1400,8 +1425,10 @@ function formPhim(data = {}) {
         <input class="form-input" id="f-DaoDien" value="${data.DaoDien||''}"></div>
       <div class="form-group"><label class="form-label">Quốc gia *</label>
         <input class="form-input" id="f-QuocGia" value="${data.QuocGia||''}"></div>
-      <div class="form-group"><label class="form-label">Thể loại *</label>
-        <input class="form-input" id="f-TheLoai" value="${data.TheLoai||''}"></div>
+      <div class="form-group full"><label class="form-label">Thể loại *</label>
+        <div id="f-TheLoai-checkboxes" style="border:1px solid var(--border); border-radius:6px; padding:12px; max-height:150px; overflow-y:auto;">
+          ${genreOptions}
+        </div></div>
       <div class="form-group"><label class="form-label">Thời lượng (phút) *</label>
         <input class="form-input" type="number" id="f-ThoiLuong" value="${data.ThoiLuong||''}"></div>
       <div class="form-group full"><label class="form-label">Mô tả</label>
@@ -1412,8 +1439,12 @@ function formPhim(data = {}) {
 }
 
 async function submitPhim() {
+  // Lấy các checkbox thể loại được chọn
+  const checkboxes = document.querySelectorAll('#f-TheLoai-checkboxes input[type="checkbox"]:checked');
+  const TheLoai = Array.from(checkboxes).map(cb => cb.value);
+  
   const d = { MaPhim:v('f-MaPhim'), TenPhim:v('f-TenPhim'), DaoDien:v('f-DaoDien'),
-    QuocGia:v('f-QuocGia'), TheLoai:v('f-TheLoai'), ThoiLuong:v('f-ThoiLuong'),
+    QuocGia:v('f-QuocGia'), TheLoai, ThoiLuong:v('f-ThoiLuong'),
     NgayKhoiChieu:v('f-NgayKhoiChieu'), MoTa:v('f-MoTa') };
   const url = formMode==='add' ? '/api/phim' : `/api/phim/${editId}`;
   const r = await apiFetch(url, { method: formMode==='add'?'POST':'PUT', body: JSON.stringify(d) });
@@ -1534,8 +1565,9 @@ function formSuatChieu(data = {}) {
         </select></div>
       <div class="form-group"><label class="form-label">Giờ bắt đầu *</label>
         <input class="form-input" type="time" id="f-ThoiGianBd" value="${data.ThoiGianBd||''}"></div>
-      <div class="form-group"><label class="form-label">Giờ kết thúc *</label>
-        <input class="form-input" type="time" id="f-ThoiGianKt" value="${data.ThoiGianKt||''}"></div>
+      <div class="form-group full" style="color:var(--muted); font-size:12px;">
+        <strong>Giờ kết thúc</strong> sẽ được tính tự động = Giờ bắt đầu + Thời lượng phim
+      </div>
       <div class="form-group full"><label class="form-label">Hệ số giá (1.0 = giá gốc)</label>
         <input class="form-input" type="number" step="0.1" min="0.5" max="5" id="f-HeSoGia" value="${data.HeSoGia||1.0}"></div>
     </div>`;
@@ -1545,7 +1577,7 @@ function formSuatChieu(data = {}) {
 
 async function submitSuatChieu() {
   const d = { MaSchieu:v('f-MaSchieu'), MaPhim:v('f-MaPhim'), MaPhong:v('f-MaPhong'),
-    NgayChieu:v('f-NgayChieu'), ThoiGianBd:v('f-ThoiGianBd'), ThoiGianKt:v('f-ThoiGianKt'),
+    NgayChieu:v('f-NgayChieu'), ThoiGianBd:v('f-ThoiGianBd'),
     HeSoGia:v('f-HeSoGia') };
   const url = formMode==='add' ? '/api/suatchieu' : `/api/suatchieu/${editId}`;
   const r = await apiFetch(url, { method: formMode==='add'?'POST':'PUT', body: JSON.stringify(d) });
@@ -1759,14 +1791,16 @@ function populateSelect(id, data, valKey, labelFn, placeholder, selectedVal='') 
 // =====================================================
 async function init() {
   // Preload shared data
-  [allTP, allRap, allPhong, allPhim] = await Promise.all([
+  [allTP, allRap, allPhong, allPhim, window.allTheLoai] = await Promise.all([
     apiFetch('/api/thanhpho'),
     apiFetch('/api/rap'),
     apiFetch('/api/phong'),
     apiFetch('/api/phim'),
+    apiFetch('/api/theloai'),
   ]);
   allTP = allTP || []; allRap = allRap || [];
   allPhong = allPhong || []; allPhim = allPhim || [];
+  window.allTheLoai = window.allTheLoai || [];
 
   // Init filter dropdowns
   populateSelect('filter-rap-tp', allTP, 'MaTP', 'TenTP', 'Tất cả thành phố');

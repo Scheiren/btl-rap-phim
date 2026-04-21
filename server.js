@@ -208,15 +208,40 @@ app.delete('/api/ghe/:id', async (req, res) => {
 });
 
 // =====================================================
+// ROUTES — THỂ LOẠI
+// =====================================================
+app.get('/api/theloai', async (req, res) => {
+  try {
+    const result = await query('SELECT * FROM TheLoai ORDER BY TenTheLoai');
+    res.json(result.recordset);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/theloai', async (req, res) => {
+  const { MaTheLoai, TenTheLoai } = req.body;
+  try {
+    await query('INSERT INTO TheLoai VALUES (@MaTheLoai, @TenTheLoai)', { MaTheLoai, TenTheLoai });
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// =====================================================
 // ROUTES — PHIM
 // =====================================================
 app.get('/api/phim', async (req, res) => {
   try {
     const { search, theloai } = req.query;
-    let q = 'SELECT *, (SELECT COUNT(*) FROM SuatChieu WHERE MaPhim=p.MaPhim) AS SoSuat FROM Phim p WHERE 1=1';
+    let q = `SELECT p.*, (SELECT COUNT(*) FROM SuatChieu WHERE MaPhim=p.MaPhim) AS SoSuat,
+      (SELECT STRING_AGG(CONCAT(ptl.MaTheLoai, ':', tl.TenTheLoai), ',') 
+       FROM Phim_TheLoai ptl JOIN TheLoai tl ON tl.MaTheLoai=ptl.MaTheLoai WHERE ptl.MaPhim=p.MaPhim) AS TheLoai
+      FROM Phim p WHERE 1=1`;
     const params = {};
     if (search) { q += ' AND (TenPhim LIKE @s OR DaoDien LIKE @s)'; params.s = `%${search}%`; }
-    if (theloai) { q += ' AND TheLoai LIKE @tl'; params.tl = `%${theloai}%`; }
+    if (theloai) { 
+      q += ` AND EXISTS (SELECT 1 FROM Phim_TheLoai ptl JOIN TheLoai tl ON tl.MaTheLoai=ptl.MaTheLoai 
+        WHERE ptl.MaPhim=p.MaPhim AND tl.TenTheLoai LIKE @tl)`; 
+      params.tl = `%${theloai}%`; 
+    }
     q += ' ORDER BY NgayKhoiChieu DESC';
     const result = await query(q, params);
     res.json(result.recordset);
@@ -225,7 +250,10 @@ app.get('/api/phim', async (req, res) => {
 
 app.get('/api/phim/:id', async (req, res) => {
   try {
-    const result = await query('SELECT * FROM Phim WHERE MaPhim=@MaPhim', { MaPhim: req.params.id });
+    const result = await query(`SELECT p.*, 
+      (SELECT STRING_AGG(CONCAT(ptl.MaTheLoai, ':', tl.TenTheLoai), ',') 
+       FROM Phim_TheLoai ptl JOIN TheLoai tl ON tl.MaTheLoai=ptl.MaTheLoai WHERE ptl.MaPhim=p.MaPhim) AS TheLoai
+      FROM Phim p WHERE MaPhim=@MaPhim`, { MaPhim: req.params.id });
     res.json(result.recordset[0]);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -233,9 +261,15 @@ app.get('/api/phim/:id', async (req, res) => {
 app.post('/api/phim', async (req, res) => {
   const { MaPhim, TenPhim, DaoDien, QuocGia, TheLoai, ThoiLuong, NgayKhoiChieu, MoTa } = req.body;
   try {
-    await query(`INSERT INTO Phim(MaPhim,TenPhim,DaoDien,QuocGia,TheLoai,ThoiLuong,NgayKhoiChieu,MoTa)
-      VALUES(@MaPhim,@TenPhim,@DaoDien,@QuocGia,@TheLoai,@ThoiLuong,@NgayKhoiChieu,@MoTa)`,
-      { MaPhim, TenPhim, DaoDien, QuocGia, TheLoai, ThoiLuong: parseInt(ThoiLuong), NgayKhoiChieu, MoTa });
+    await query(`INSERT INTO Phim(MaPhim,TenPhim,DaoDien,QuocGia,ThoiLuong,NgayKhoiChieu,MoTa)
+      VALUES(@MaPhim,@TenPhim,@DaoDien,@QuocGia,@ThoiLuong,@NgayKhoiChieu,@MoTa)`,
+      { MaPhim, TenPhim, DaoDien, QuocGia, ThoiLuong: parseInt(ThoiLuong), NgayKhoiChieu, MoTa });
+    
+    if (Array.isArray(TheLoai) && TheLoai.length > 0) {
+      for (const ma of TheLoai) {
+        await query('INSERT INTO Phim_TheLoai VALUES (@MaPhim, @MaTheLoai)', { MaPhim, MaTheLoai: ma });
+      }
+    }
     res.json({ success: true, message: 'Thêm phim thành công' });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -244,15 +278,23 @@ app.put('/api/phim/:id', async (req, res) => {
   const { TenPhim, DaoDien, QuocGia, TheLoai, ThoiLuong, NgayKhoiChieu, MoTa } = req.body;
   try {
     await query(`UPDATE Phim SET TenPhim=@TenPhim,DaoDien=@DaoDien,QuocGia=@QuocGia,
-      TheLoai=@TheLoai,ThoiLuong=@ThoiLuong,NgayKhoiChieu=@NgayKhoiChieu,MoTa=@MoTa
+      ThoiLuong=@ThoiLuong,NgayKhoiChieu=@NgayKhoiChieu,MoTa=@MoTa
       WHERE MaPhim=@MaPhim`,
-      { MaPhim: req.params.id, TenPhim, DaoDien, QuocGia, TheLoai, ThoiLuong: parseInt(ThoiLuong), NgayKhoiChieu, MoTa });
+      { MaPhim: req.params.id, TenPhim, DaoDien, QuocGia, ThoiLuong: parseInt(ThoiLuong), NgayKhoiChieu, MoTa });
+    
+    await query('DELETE FROM Phim_TheLoai WHERE MaPhim=@MaPhim', { MaPhim: req.params.id });
+    if (Array.isArray(TheLoai) && TheLoai.length > 0) {
+      for (const ma of TheLoai) {
+        await query('INSERT INTO Phim_TheLoai VALUES (@MaPhim, @MaTheLoai)', { MaPhim: req.params.id, MaTheLoai: ma });
+      }
+    }
     res.json({ success: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.delete('/api/phim/:id', async (req, res) => {
   try {
+    await query('DELETE FROM Phim_TheLoai WHERE MaPhim=@MaPhim', { MaPhim: req.params.id });
     await query('DELETE FROM Phim WHERE MaPhim=@MaPhim', { MaPhim: req.params.id });
     res.json({ success: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -266,6 +308,7 @@ app.get('/api/suatchieu', async (req, res) => {
     const { maPhim, maPhong, ngay } = req.query;
     let q = `
       SELECT sc.*, pm.TenPhim, pm.ThoiLuong, p.TenPhong, r.TenRap,
+        DATEADD(MINUTE, pm.ThoiLuong, CAST(sc.ThoiGianBd AS DATETIME)) AS ThoiGianKt,
         (SELECT COUNT(*) FROM Ve WHERE MaSchieu=sc.MaSchieu AND TrangThai=N'Đã đặt') AS SoVeDaBan,
         (SELECT COUNT(*) FROM Ghe WHERE MaPhong=sc.MaPhong) AS TongGhe
       FROM SuatChieu sc
@@ -284,20 +327,20 @@ app.get('/api/suatchieu', async (req, res) => {
 });
 
 app.post('/api/suatchieu', async (req, res) => {
-  const { MaSchieu, MaPhim, MaPhong, NgayChieu, ThoiGianBd, ThoiGianKt, HeSoGia } = req.body;
+  const { MaSchieu, MaPhim, MaPhong, NgayChieu, ThoiGianBd, HeSoGia } = req.body;
   try {
-    await query(`INSERT INTO SuatChieu VALUES(@MaSchieu,@MaPhim,@MaPhong,@NgayChieu,@ThoiGianBd,@ThoiGianKt,@HeSoGia)`,
-      { MaSchieu, MaPhim, MaPhong, NgayChieu, ThoiGianBd, ThoiGianKt, HeSoGia: parseFloat(HeSoGia) });
+    await query(`INSERT INTO SuatChieu VALUES(@MaSchieu,@MaPhim,@MaPhong,@NgayChieu,@ThoiGianBd,@HeSoGia)`,
+      { MaSchieu, MaPhim, MaPhong, NgayChieu, ThoiGianBd, HeSoGia: parseFloat(HeSoGia) });
     res.json({ success: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.put('/api/suatchieu/:id', async (req, res) => {
-  const { MaPhim, MaPhong, NgayChieu, ThoiGianBd, ThoiGianKt, HeSoGia } = req.body;
+  const { MaPhim, MaPhong, NgayChieu, ThoiGianBd, HeSoGia } = req.body;
   try {
     await query(`UPDATE SuatChieu SET MaPhim=@MaPhim,MaPhong=@MaPhong,NgayChieu=@NgayChieu,
-      ThoiGianBd=@ThoiGianBd,ThoiGianKt=@ThoiGianKt,HeSoGia=@HeSoGia WHERE MaSchieu=@MaSchieu`,
-      { MaSchieu: req.params.id, MaPhim, MaPhong, NgayChieu, ThoiGianBd, ThoiGianKt, HeSoGia: parseFloat(HeSoGia) });
+      ThoiGianBd=@ThoiGianBd,HeSoGia=@HeSoGia WHERE MaSchieu=@MaSchieu`,
+      { MaSchieu: req.params.id, MaPhim, MaPhong, NgayChieu, ThoiGianBd, HeSoGia: parseFloat(HeSoGia) });
     res.json({ success: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -314,8 +357,10 @@ app.get('/api/suatchieu/:id/soghe', async (req, res) => {
   try {
     const result = await query(`
       SELECT g.MaGhe, g.ViTri, g.LoaiGhe,
-        CASE WHEN v.MaVe IS NOT NULL THEN N'Đã đặt' ELSE N'Còn trống' END AS TrangThai
+        CASE WHEN v.MaVe IS NOT NULL THEN N'Đã đặt' ELSE N'Còn trống' END AS TrangThai,
+        DATEADD(MINUTE, pm.ThoiLuong, CAST(sc.ThoiGianBd AS DATETIME)) AS ThoiGianKt
       FROM SuatChieu sc
+      JOIN Phim pm ON pm.MaPhim=sc.MaPhim
       JOIN Ghe g ON g.MaPhong=sc.MaPhong
       LEFT JOIN Ve v ON v.MaSchieu=sc.MaSchieu AND v.MaPhong=g.MaPhong
         AND v.ViTri=g.ViTri AND v.TrangThai=N'Đã đặt'
