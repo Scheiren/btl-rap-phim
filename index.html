@@ -1,0 +1,1789 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CineAdmin — Quản Lý Rạp Chiếu Phim</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+/* ===== CSS VARIABLES ===== */
+:root {
+  --bg:        #080a0f;
+  --bg2:       #0e1118;
+  --bg3:       #151820;
+  --surface:   #1a1e28;
+  --border:    #252a38;
+  --gold:      #c9a84c;
+  --gold-dim:  #a0813a;
+  --gold-glow: rgba(201,168,76,0.15);
+  --red:       #e54c4c;
+  --green:     #3fcf8e;
+  --blue:      #4c8ef5;
+  --text:      #e8eaf0;
+  --muted:     #7a8099;
+  --sidebar-w: 240px;
+  --radius:    10px;
+  --font-head: 'Bebas Neue', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+}
+
+/* ===== RESET & BASE ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  overflow-x: hidden;
+}
+
+/* ===== SCROLLBAR ===== */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--bg2); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+/* ===== SIDEBAR ===== */
+#sidebar {
+  width: var(--sidebar-w);
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+  z-index: 100;
+  transition: transform 0.3s ease;
+}
+
+.sidebar-logo {
+  padding: 24px 20px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.sidebar-logo .logo-icon {
+  font-size: 28px; margin-bottom: 4px;
+}
+.sidebar-logo h1 {
+  font-family: var(--font-head);
+  font-size: 28px;
+  letter-spacing: 3px;
+  color: var(--gold);
+  line-height: 1;
+}
+.sidebar-logo p {
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+.sidebar-nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 0;
+}
+
+.nav-section-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--muted);
+  text-transform: uppercase;
+  padding: 16px 20px 6px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-left: 3px solid transparent;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 500;
+  user-select: none;
+}
+.nav-item:hover { color: var(--text); background: var(--gold-glow); }
+.nav-item.active {
+  color: var(--gold);
+  border-left-color: var(--gold);
+  background: var(--gold-glow);
+}
+.nav-item .nav-icon { font-size: 18px; width: 22px; text-align: center; }
+.nav-badge {
+  margin-left: auto;
+  background: var(--gold);
+  color: #000;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 10px;
+}
+
+.sidebar-footer {
+  padding: 16px 20px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* ===== MAIN CONTENT ===== */
+#main {
+  margin-left: var(--sidebar-w);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* ===== TOP BAR ===== */
+#topbar {
+  height: 60px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 28px;
+  gap: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+#topbar h2 {
+  font-family: var(--font-head);
+  font-size: 22px;
+  letter-spacing: 2px;
+  color: var(--text);
+  flex: 1;
+}
+
+.topbar-search {
+  display: flex;
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 14px;
+  gap: 8px;
+  width: 240px;
+  transition: border-color 0.2s;
+}
+.topbar-search:focus-within { border-color: var(--gold-dim); }
+.topbar-search input {
+  background: none; border: none; outline: none;
+  color: var(--text); font-family: var(--font-body); font-size: 13px;
+  width: 100%;
+}
+.topbar-search input::placeholder { color: var(--muted); }
+
+.topbar-btn {
+  background: var(--gold);
+  color: #000;
+  border: none;
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.topbar-btn:hover { background: #e0bb55; transform: translateY(-1px); }
+
+/* ===== PAGE CONTENT ===== */
+#content {
+  flex: 1;
+  padding: 28px;
+  overflow-y: auto;
+}
+
+.page { display: none; animation: fadeIn 0.3s ease; }
+.page.active { display: block; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== STATS GRID ===== */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s, border-color 0.2s;
+}
+.stat-card:hover { transform: translateY(-2px); border-color: var(--gold-dim); }
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--gold);
+}
+.stat-card .stat-icon {
+  font-size: 28px;
+  margin-bottom: 12px;
+}
+.stat-card .stat-value {
+  font-family: var(--font-head);
+  font-size: 32px;
+  letter-spacing: 1px;
+  color: var(--gold);
+  line-height: 1;
+}
+.stat-card .stat-label {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 4px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* ===== SECTION HEADER ===== */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.section-title {
+  font-family: var(--font-head);
+  font-size: 20px;
+  letter-spacing: 2px;
+  color: var(--text);
+}
+.section-subtitle { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+/* ===== FILTERS ===== */
+.filters {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.filter-input, .filter-select {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 13px;
+  padding: 8px 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.filter-input:focus, .filter-select:focus { border-color: var(--gold-dim); }
+.filter-select option { background: var(--surface); }
+
+/* ===== TABLE ===== */
+.table-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+
+thead {
+  background: var(--bg3);
+  border-bottom: 1px solid var(--border);
+}
+thead th {
+  text-align: left;
+  padding: 13px 16px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+tbody tr {
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s;
+}
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: rgba(201,168,76,0.04); }
+tbody td { padding: 12px 16px; vertical-align: middle; }
+
+.td-id { font-family: monospace; color: var(--muted); font-size: 12px; }
+.td-name { font-weight: 500; }
+.td-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+/* ===== BADGES ===== */
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+.badge-gold { background: rgba(201,168,76,0.15); color: var(--gold); }
+.badge-green { background: rgba(63,207,142,0.12); color: var(--green); }
+.badge-red { background: rgba(229,76,76,0.12); color: var(--red); }
+.badge-blue { background: rgba(76,142,245,0.12); color: var(--blue); }
+.badge-gray { background: rgba(122,128,153,0.15); color: var(--muted); }
+
+/* ===== ACTION BUTTONS ===== */
+.actions { display: flex; gap: 6px; }
+.btn-action {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--muted);
+  font-family: var(--font-body);
+  transition: all 0.15s;
+}
+.btn-action:hover { color: var(--text); border-color: var(--text); }
+.btn-edit:hover  { color: var(--gold); border-color: var(--gold); }
+.btn-delete:hover { color: var(--red); border-color: var(--red); }
+.btn-view:hover { color: var(--blue); border-color: var(--blue); }
+
+/* ===== GRID CARDS (for movies) ===== */
+.movie-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 18px;
+  margin-top: 4px;
+}
+.movie-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: transform 0.2s, border-color 0.2s;
+  cursor: pointer;
+  position: relative;
+}
+.movie-card:hover { transform: translateY(-4px); border-color: var(--gold-dim); }
+
+.movie-poster {
+  height: 240px;
+  background: linear-gradient(135deg, #1a1e28 0%, #0e1118 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 60px;
+  position: relative;
+  overflow: hidden;
+}
+.movie-poster::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0; height: 80px;
+  background: linear-gradient(to top, var(--surface), transparent);
+}
+.movie-info { padding: 14px; }
+.movie-title { font-weight: 600; font-size: 14px; line-height: 1.3; margin-bottom: 6px; }
+.movie-meta { display: flex; gap: 6px; flex-wrap: wrap; }
+.movie-duration {
+  font-size: 11px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.movie-genre-badge {
+  font-size: 10px;
+  background: rgba(201,168,76,0.1);
+  color: var(--gold-dim);
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+
+/* ===== MODAL ===== */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+.modal-overlay.open { display: flex; }
+
+.modal {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  width: 560px;
+  max-width: 95vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: modalIn 0.2s ease;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.modal-header {
+  padding: 22px 24px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.modal-title {
+  font-family: var(--font-head);
+  font-size: 22px;
+  letter-spacing: 2px;
+  color: var(--gold);
+}
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 24px;
+  cursor: pointer;
+  width: 32px; height: 32px;
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+.modal-close:hover { background: var(--border); color: var(--text); }
+
+.modal-body { padding: 20px 24px 24px; }
+.modal-footer { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; gap: 10px; justify-content: flex-end; }
+
+/* ===== FORM ===== */
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+.form-group.full { grid-column: 1/-1; }
+.form-label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--muted);
+}
+.form-input, .form-select, .form-textarea {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  padding: 10px 14px;
+  outline: none;
+  transition: border-color 0.2s;
+  width: 100%;
+}
+.form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--gold); }
+.form-select option { background: var(--bg2); }
+.form-textarea { resize: vertical; min-height: 80px; }
+
+/* ===== BUTTONS ===== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+  text-decoration: none;
+}
+.btn-primary { background: var(--gold); color: #000; }
+.btn-primary:hover { background: #e0bb55; }
+.btn-danger { background: rgba(229,76,76,0.15); color: var(--red); border: 1px solid rgba(229,76,76,0.3); }
+.btn-danger:hover { background: rgba(229,76,76,0.25); }
+.btn-ghost { background: var(--surface); color: var(--muted); border: 1px solid var(--border); }
+.btn-ghost:hover { color: var(--text); border-color: var(--text); }
+
+/* ===== SEAT MAP ===== */
+.seat-legend {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.legend-dot {
+  width: 14px; height: 14px;
+  border-radius: 3px;
+  display: inline-block;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+.seat-screen {
+  background: linear-gradient(to bottom, var(--gold), transparent);
+  height: 4px;
+  border-radius: 2px;
+  margin-bottom: 20px;
+  opacity: 0.5;
+}
+.seat-screen-label { text-align: center; font-size: 11px; color: var(--muted); margin-bottom: 16px; letter-spacing: 3px; text-transform: uppercase; }
+.seat-grid { display: flex; flex-direction: column; gap: 6px; align-items: center; }
+.seat-row { display: flex; gap: 6px; align-items: center; }
+.seat-row-label { width: 20px; font-size: 12px; color: var(--muted); text-align: center; font-weight: 600; }
+.seat {
+  width: 32px; height: 28px;
+  border-radius: 5px 5px 0 0;
+  border: none;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 600;
+  transition: transform 0.1s, filter 0.1s;
+}
+.seat:hover:not(:disabled) { transform: scale(1.1); filter: brightness(1.2); }
+.seat.empty { background: var(--border); color: var(--muted); }
+.seat.booked { background: rgba(229,76,76,0.3); color: var(--red); cursor: not-allowed; }
+.seat.vip { background: rgba(201,168,76,0.2); color: var(--gold); border: 1px solid rgba(201,168,76,0.3); }
+.seat.vip.booked { background: rgba(201,168,76,0.08); opacity: 0.5; }
+.seat.selected { background: var(--gold); color: #000; }
+
+/* ===== TOAST ===== */
+#toast-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.toast {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 18px;
+  font-size: 13px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  animation: toastIn 0.3s ease;
+  min-width: 260px;
+}
+.toast.success { border-left: 3px solid var(--green); }
+.toast.error   { border-left: 3px solid var(--red); }
+.toast.info    { border-left: 3px solid var(--blue); }
+@keyframes toastIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+
+/* ===== CHARTS ===== */
+.chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 20px; }
+.chart-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+}
+.chart-card h3 { font-family: var(--font-head); font-size: 16px; letter-spacing: 1.5px; margin-bottom: 16px; color: var(--muted); text-transform: uppercase; }
+
+.bar-chart { display: flex; flex-direction: column; gap: 10px; }
+.bar-item { display: flex; flex-direction: column; gap: 4px; }
+.bar-label { display: flex; justify-content: space-between; font-size: 12px; }
+.bar-label span:first-child { color: var(--text); font-weight: 500; }
+.bar-label span:last-child { color: var(--gold); font-weight: 600; }
+.bar-track { height: 6px; background: var(--border); border-radius: 4px; overflow: hidden; }
+.bar-fill { height: 100%; background: linear-gradient(to right, var(--gold-dim), var(--gold)); border-radius: 4px; transition: width 1s ease; }
+
+/* ===== EMPTY STATE ===== */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--muted);
+}
+.empty-state .empty-icon { font-size: 48px; margin-bottom: 12px; }
+.empty-state p { font-size: 14px; }
+
+/* ===== LOADING ===== */
+.loading {
+  text-align: center;
+  padding: 40px;
+  color: var(--muted);
+}
+.spinner {
+  width: 32px; height: 32px;
+  border: 3px solid var(--border);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 12px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ===== PAGINATION ===== */
+.pagination { display: flex; gap: 6px; margin-top: 16px; justify-content: center; }
+.page-btn {
+  width: 34px; height: 34px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: 13px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+.page-btn:hover { color: var(--text); border-color: var(--text); }
+.page-btn.active { background: var(--gold); color: #000; border-color: var(--gold); font-weight: 700; }
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 1200px) {
+  .stats-grid { grid-template-columns: repeat(3, 1fr); }
+  .chart-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 900px) {
+  :root { --sidebar-w: 0px; }
+  #sidebar { transform: translateX(-240px); }
+  #sidebar.open { transform: translateX(0); width: 240px; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+</head>
+<body>
+
+<!-- ===== TOAST CONTAINER ===== -->
+<div id="toast-container"></div>
+
+<!-- ===== SIDEBAR ===== -->
+<nav id="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-icon">🎬</div>
+    <h1>CineAdmin</h1>
+    <p>Quản lý rạp chiếu phim</p>
+  </div>
+  <div class="sidebar-nav">
+    <div class="nav-section-label">Tổng quan</div>
+    <div class="nav-item active" onclick="showPage('dashboard')">
+      <span class="nav-icon">📊</span> Dashboard
+    </div>
+
+    <div class="nav-section-label">Địa điểm</div>
+    <div class="nav-item" onclick="showPage('thanhpho')">
+      <span class="nav-icon">🏙️</span> Thành phố
+    </div>
+    <div class="nav-item" onclick="showPage('rap')">
+      <span class="nav-icon">🏟️</span> Rạp chiếu phim
+    </div>
+    <div class="nav-item" onclick="showPage('phong')">
+      <span class="nav-icon">🎭</span> Phòng chiếu
+    </div>
+    <div class="nav-item" onclick="showPage('ghe')">
+      <span class="nav-icon">💺</span> Quản lý ghế
+    </div>
+
+    <div class="nav-section-label">Phim & Lịch</div>
+    <div class="nav-item" onclick="showPage('phim')">
+      <span class="nav-icon">🎥</span> Phim
+    </div>
+    <div class="nav-item" onclick="showPage('suatchieu')">
+      <span class="nav-icon">🗓️</span> Suất chiếu
+    </div>
+
+    <div class="nav-section-label">Kinh doanh</div>
+    <div class="nav-item" onclick="showPage('ve')">
+      <span class="nav-icon">🎫</span> Vé & Đặt chỗ
+    </div>
+    <div class="nav-item" onclick="showPage('khachhang')">
+      <span class="nav-icon">👥</span> Khách hàng
+    </div>
+  </div>
+  <div class="sidebar-footer">
+    SQL Server · CinemaDB
+  </div>
+</nav>
+
+<!-- ===== MAIN ===== -->
+<div id="main">
+  <!-- TOP BAR -->
+  <header id="topbar">
+    <h2 id="page-title">DASHBOARD</h2>
+    <div class="topbar-search">
+      <span>🔍</span>
+      <input type="text" id="global-search" placeholder="Tìm kiếm..." oninput="handleSearch(this.value)">
+    </div>
+    <button class="topbar-btn" id="add-btn" onclick="handleAdd()" style="display:none">
+      <span>＋</span> <span id="add-label">Thêm mới</span>
+    </button>
+  </header>
+
+  <!-- CONTENT -->
+  <div id="content">
+
+    <!-- ===== DASHBOARD ===== -->
+    <div id="page-dashboard" class="page active">
+      <div class="stats-grid" id="stats-grid">
+        <div class="stat-card"><div class="stat-icon">🎥</div><div class="stat-value" id="s-phim">—</div><div class="stat-label">Phim đang chiếu</div></div>
+        <div class="stat-card"><div class="stat-icon">🏟️</div><div class="stat-value" id="s-rap">—</div><div class="stat-label">Rạp chiếu phim</div></div>
+        <div class="stat-card"><div class="stat-icon">👥</div><div class="stat-value" id="s-khach">—</div><div class="stat-label">Khách hàng</div></div>
+        <div class="stat-card"><div class="stat-icon">🎫</div><div class="stat-value" id="s-ve">—</div><div class="stat-label">Vé đã bán</div></div>
+        <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-value" id="s-dt">—</div><div class="stat-label">Doanh thu (triệu)</div></div>
+      </div>
+      <div class="chart-grid">
+        <div class="chart-card">
+          <h3>Doanh thu theo rạp</h3>
+          <div class="bar-chart" id="chart-rap"></div>
+        </div>
+        <div class="chart-card">
+          <h3>Phim ăn khách</h3>
+          <div class="bar-chart" id="chart-phim"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== THÀNH PHỐ ===== -->
+    <div id="page-thanhpho" class="page">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Mã TP</th><th>Tên thành phố</th><th>Số rạp</th><th>Thao tác</th></tr></thead>
+          <tbody id="tb-thanhpho"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ===== RẠP ===== -->
+    <div id="page-rap" class="page">
+      <div class="filters">
+        <select class="filter-select" id="filter-rap-tp" onchange="loadRap()">
+          <option value="">Tất cả thành phố</option>
+        </select>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Mã rạp</th><th>Tên rạp</th><th>Địa chỉ</th><th>Thành phố</th><th>Số phòng</th><th>Thao tác</th></tr></thead>
+          <tbody id="tb-rap"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ===== PHÒNG ===== -->
+    <div id="page-phong" class="page">
+      <div class="filters">
+        <select class="filter-select" id="filter-phong-rap" onchange="loadPhong()">
+          <option value="">Tất cả rạp</option>
+        </select>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Mã phòng</th><th>Tên phòng</th><th>Rạp</th><th>Thành phố</th><th>Số ghế</th><th>Thao tác</th></tr></thead>
+          <tbody id="tb-phong"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ===== GHẾ ===== -->
+    <div id="page-ghe" class="page">
+      <div class="filters">
+        <select class="filter-select" id="filter-ghe-phong" onchange="loadGhe()">
+          <option value="">Chọn phòng để xem ghế</option>
+        </select>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Mã ghế</th><th>Phòng</th><th>Rạp</th><th>Vị trí</th><th>Loại ghế</th><th>Thao tác</th></tr></thead>
+          <tbody id="tb-ghe"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ===== PHIM ===== -->
+    <div id="page-phim" class="page">
+      <div class="filters">
+        <input type="text" class="filter-input" placeholder="Tìm phim, đạo diễn..." id="search-phim" oninput="loadPhim()">
+        <select class="filter-select" id="filter-theloai" onchange="loadPhim()">
+          <option value="">Tất cả thể loại</option>
+          <option>Hành động</option><option>Viễn tưởng</option><option>Hài</option>
+          <option>Drama</option><option>Kinh dị</option><option>Hoạt hình</option>
+          <option>Tình cảm</option><option>Tài liệu</option>
+        </select>
+      </div>
+      <div class="movie-grid" id="movie-grid"></div>
+    </div>
+
+    <!-- ===== SUẤT CHIẾU ===== -->
+    <div id="page-suatchieu" class="page">
+      <div class="filters">
+        <input type="date" class="filter-input" id="filter-ngay" onchange="loadSuatChieu()">
+        <select class="filter-select" id="filter-sc-rap" onchange="filterSuatChieuByRap()">
+          <option value="">Tất cả rạp</option>
+        </select>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Mã suất</th><th>Phim</th><th>Phòng / Rạp</th><th>Ngày chiếu</th><th>Giờ chiếu</th><th>Hệ số giá</th><th>Đã bán</th><th>Thao tác</th></tr></thead>
+          <tbody id="tb-suatchieu"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ===== VÉ ===== -->
+    <div id="page-ve" class="page">
+      <div class="filters">
+        <select class="filter-select" id="filter-ve-tt" onchange="loadVe()">
+          <option value="">Tất cả trạng thái</option>
+          <option value="Đã đặt">Đã đặt</option>
+          <option value="Còn trống">Còn trống</option>
+          <option value="Đã hủy">Đã hủy</option>
+        </select>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Mã vé</th><th>Khách hàng</th><th>Phim</th><th>Suất / Phòng</th><th>Vị trí</th><th>Ngày đặt</th><th>Thành tiền</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+          <tbody id="tb-ve"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ===== KHÁCH HÀNG ===== -->
+    <div id="page-khachhang" class="page">
+      <div class="filters">
+        <input type="text" class="filter-input" placeholder="Tìm tên, SĐT, email..." id="search-kh" oninput="loadKhachHang()">
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Mã KH</th><th>Họ tên</th><th>SĐT</th><th>Email</th><th>Điểm tích lũy</th><th>Tổng chi tiêu</th><th>Số vé</th><th>Thao tác</th></tr></thead>
+          <tbody id="tb-khachhang"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- end #content -->
+</div><!-- end #main -->
+
+<!-- ===== MODALS ===== -->
+
+<!-- Generic Form Modal -->
+<div class="modal-overlay" id="modal-form">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-form-title">Thêm mới</span>
+      <button class="modal-close" onclick="closeModal('modal-form')">✕</button>
+    </div>
+    <div class="modal-body" id="modal-form-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-form')">Hủy</button>
+      <button class="btn btn-primary" onclick="submitForm()">Lưu</button>
+    </div>
+  </div>
+</div>
+
+<!-- Seat Map Modal -->
+<div class="modal-overlay" id="modal-seat">
+  <div class="modal" style="width:640px">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-seat-title">Sơ đồ phòng</span>
+      <button class="modal-close" onclick="closeModal('modal-seat')">✕</button>
+    </div>
+    <div class="modal-body" id="modal-seat-body"></div>
+  </div>
+</div>
+
+<!-- Movie Detail Modal -->
+<div class="modal-overlay" id="modal-movie">
+  <div class="modal" style="width:500px">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-movie-title">Chi tiết phim</span>
+      <button class="modal-close" onclick="closeModal('modal-movie')">✕</button>
+    </div>
+    <div class="modal-body" id="modal-movie-body"></div>
+  </div>
+</div>
+
+<!-- Delete Confirm Modal -->
+<div class="modal-overlay" id="modal-delete">
+  <div class="modal" style="width:380px">
+    <div class="modal-header">
+      <span class="modal-title" style="color:var(--red)">Xác nhận xóa</span>
+      <button class="modal-close" onclick="closeModal('modal-delete')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="color:var(--muted);font-size:14px;line-height:1.6" id="delete-msg">Bạn có chắc chắn muốn xóa dữ liệu này?</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-delete')">Hủy</button>
+      <button class="btn btn-danger" onclick="confirmDelete()">Xóa</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// =====================================================
+// CONFIG & STATE
+// =====================================================
+const API = '';  // same origin, server serves static files
+
+let currentPage = 'dashboard';
+let formMode = 'add';
+let formEntity = '';
+let editId = null;
+let deleteCallback = null;
+let allTP = [], allRap = [], allPhong = [], allPhim = [];
+
+// =====================================================
+// NAVIGATION
+// =====================================================
+function showPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  
+  document.getElementById('page-' + page).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => {
+    if (n.textContent.includes(getPageLabel(page))) n.classList.add('active');
+  });
+
+  currentPage = page;
+  document.getElementById('page-title').textContent = getPageLabel(page).toUpperCase();
+  
+  const addBtn = document.getElementById('add-btn');
+  const noAdd = ['dashboard', 'ghe'];
+  addBtn.style.display = noAdd.includes(page) ? 'none' : 'flex';
+  document.getElementById('add-label').textContent = getAddLabel(page);
+
+  // Hide search for some pages
+  const searchInput = document.getElementById('global-search');
+  searchInput.style.display = ['phim','khachhang'].includes(page) ? 'none' : 'flex';
+
+  loadPageData(page);
+}
+
+function getPageLabel(p) {
+  const m = { dashboard:'Dashboard', thanhpho:'Thành phố', rap:'Rạp chiếu phim',
+    phong:'Phòng chiếu', ghe:'Quản lý ghế', phim:'Phim', suatchieu:'Suất chiếu',
+    ve:'Vé & Đặt chỗ', khachhang:'Khách hàng' };
+  return m[p] || p;
+}
+
+function getAddLabel(p) {
+  const m = { thanhpho:'Thêm thành phố', rap:'Thêm rạp', phong:'Thêm phòng',
+    phim:'Thêm phim', suatchieu:'Thêm suất chiếu', ve:'Đặt vé', khachhang:'Thêm khách hàng' };
+  return m[p] || 'Thêm mới';
+}
+
+function loadPageData(page) {
+  const loaders = {
+    dashboard: loadDashboard,
+    thanhpho: loadThanhPho,
+    rap: loadRap,
+    phong: loadPhong,
+    ghe: loadGhe,
+    phim: loadPhim,
+    suatchieu: loadSuatChieu,
+    ve: loadVe,
+    khachhang: loadKhachHang,
+  };
+  if (loaders[page]) loaders[page]();
+}
+
+function handleSearch(v) {}
+function handleAdd() {
+  openAddForm(currentPage);
+}
+
+// =====================================================
+// API HELPERS
+// =====================================================
+async function apiFetch(url, opts = {}) {
+  try {
+    const r = await fetch(API + url, {
+      headers: { 'Content-Type': 'application/json' },
+      ...opts,
+    });
+    return await r.json();
+  } catch (e) {
+    toast('Lỗi kết nối server: ' + e.message, 'error');
+    return null;
+  }
+}
+
+// =====================================================
+// TOAST
+// =====================================================
+function toast(msg, type = 'info') {
+  const icons = { success:'✅', error:'❌', info:'ℹ️' };
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.innerHTML = `<span>${icons[type]||'ℹ️'}</span><span>${msg}</span>`;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+// =====================================================
+// MODAL HELPERS
+// =====================================================
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function confirmDeleteFn(msg, cb) {
+  document.getElementById('delete-msg').textContent = msg;
+  deleteCallback = cb;
+  openModal('modal-delete');
+}
+function confirmDelete() {
+  if (deleteCallback) deleteCallback();
+  closeModal('modal-delete');
+}
+
+// =====================================================
+// DASHBOARD
+// =====================================================
+async function loadDashboard() {
+  const [stats, rapChart, phimChart] = await Promise.all([
+    apiFetch('/api/thongke/tongquan'),
+    apiFetch('/api/thongke/doanhthu-theo-rap'),
+    apiFetch('/api/thongke/phim-hot'),
+  ]);
+  if (stats) {
+    document.getElementById('s-phim').textContent = stats.tongPhim;
+    document.getElementById('s-rap').textContent = stats.tongRap;
+    document.getElementById('s-khach').textContent = stats.tongKhach;
+    document.getElementById('s-ve').textContent = stats.tongVe;
+    const dt = (stats.doanhThu / 1e6).toFixed(1);
+    document.getElementById('s-dt').textContent = dt + 'M';
+  }
+  if (rapChart && rapChart.length) {
+    const max = Math.max(...rapChart.map(r => r.DoanhThu)) || 1;
+    document.getElementById('chart-rap').innerHTML = rapChart.map(r => `
+      <div class="bar-item">
+        <div class="bar-label">
+          <span>${r.TenRap}</span>
+          <span>${fmtMoney(r.DoanhThu)}</span>
+        </div>
+        <div class="bar-track"><div class="bar-fill" style="width:${(r.DoanhThu/max*100).toFixed(1)}%"></div></div>
+      </div>`).join('');
+  }
+  if (phimChart && phimChart.length) {
+    const max = Math.max(...phimChart.map(r => r.SoVe)) || 1;
+    document.getElementById('chart-phim').innerHTML = phimChart.map(r => `
+      <div class="bar-item">
+        <div class="bar-label">
+          <span>${r.TenPhim}</span>
+          <span>${r.SoVe} vé</span>
+        </div>
+        <div class="bar-track"><div class="bar-fill" style="width:${(r.SoVe/max*100).toFixed(1)}%"></div></div>
+      </div>`).join('');
+  }
+}
+
+// =====================================================
+// THÀNH PHỐ
+// =====================================================
+async function loadThanhPho() {
+  const data = await apiFetch('/api/thanhpho');
+  allTP = data || [];
+  const tb = document.getElementById('tb-thanhpho');
+  if (!data || !data.length) { tb.innerHTML = emptyRow(4); return; }
+  tb.innerHTML = data.map(r => `
+    <tr>
+      <td class="td-id">${r.MaTP}</td>
+      <td class="td-name">${r.TenTP}</td>
+      <td><span class="badge badge-blue">—</span></td>
+      <td><div class="actions">
+        <button class="btn-action btn-edit" onclick="editThanhPho('${r.MaTP}','${esc(r.TenTP)}')">✏️ Sửa</button>
+        <button class="btn-action btn-delete" onclick="deleteThanhPho('${r.MaTP}')">🗑️ Xóa</button>
+      </div></td>
+    </tr>`).join('');
+}
+
+function openAddForm(page) {
+  formEntity = page;
+  formMode = 'add'; editId = null;
+  const forms = {
+    thanhpho: formThanhPho,
+    rap: () => formRap(),
+    phong: () => formPhong(),
+    phim: formPhim,
+    suatchieu: () => formSuatChieu(),
+    ve: () => formVe(),
+    khachhang: formKhachHang,
+  };
+  if (forms[page]) forms[page]();
+}
+
+function formThanhPho(data = {}) {
+  document.getElementById('modal-form-title').textContent = data.MaTP ? 'Sửa thành phố' : 'Thêm thành phố';
+  document.getElementById('modal-form-body').innerHTML = `
+    <div class="form-grid">
+      <div class="form-group"><label class="form-label">Mã TP *</label>
+        <input class="form-input" id="f-MaTP" value="${data.MaTP||''}" ${data.MaTP?'readonly':''}></div>
+      <div class="form-group"><label class="form-label">Tên thành phố *</label>
+        <input class="form-input" id="f-TenTP" value="${data.TenTP||''}"></div>
+    </div>`;
+  formEntity = 'thanhpho';
+  openModal('modal-form');
+}
+
+async function submitForm() {
+  const handlers = {
+    thanhpho: submitThanhPho,
+    rap: submitRap,
+    phong: submitPhong,
+    phim: submitPhim,
+    suatchieu: submitSuatChieu,
+    ve: submitVe,
+    khachhang: submitKhachHang,
+  };
+  if (handlers[formEntity]) await handlers[formEntity]();
+}
+
+async function submitThanhPho() {
+  const d = { MaTP: v('f-MaTP'), TenTP: v('f-TenTP') };
+  if (!d.MaTP || !d.TenTP) { toast('Vui lòng nhập đầy đủ', 'error'); return; }
+  const url = formMode === 'add' ? '/api/thanhpho' : `/api/thanhpho/${editId}`;
+  const method = formMode === 'add' ? 'POST' : 'PUT';
+  const r = await apiFetch(url, { method, body: JSON.stringify(d) });
+  if (r?.success) { toast('Lưu thành công!', 'success'); closeModal('modal-form'); loadThanhPho(); }
+  else toast(r?.error || 'Lỗi', 'error');
+}
+
+function editThanhPho(MaTP, TenTP) {
+  formMode = 'edit'; editId = MaTP;
+  formThanhPho({ MaTP, TenTP });
+}
+
+function deleteThanhPho(id) {
+  confirmDeleteFn(`Xóa thành phố mã "${id}"?`, async () => {
+    const r = await apiFetch(`/api/thanhpho/${id}`, { method: 'DELETE' });
+    if (r?.success) { toast('Đã xóa!', 'success'); loadThanhPho(); }
+    else toast(r?.error || 'Lỗi', 'error');
+  });
+}
+
+// =====================================================
+// RẠP
+// =====================================================
+async function loadRap() {
+  const tp = document.getElementById('filter-rap-tp')?.value || '';
+  let url = '/api/rap';
+  const data = await apiFetch(url);
+  const filtered = tp ? data?.filter(r => r.MaTP === tp) : data;
+  allRap = data || [];
+  populateSelect('filter-phong-rap', allRap, 'MaRap', 'TenRap', 'Tất cả rạp');
+  populateSelect('filter-rap-tp', allTP, 'MaTP', 'TenTP', 'Tất cả thành phố', tp);
+  const tb = document.getElementById('tb-rap');
+  if (!filtered?.length) { tb.innerHTML = emptyRow(6); return; }
+  tb.innerHTML = filtered.map(r => `
+    <tr>
+      <td class="td-id">${r.MaRap}</td>
+      <td><div class="td-name">${r.TenRap}</div></td>
+      <td style="color:var(--muted);font-size:13px">${r.DiaChi}</td>
+      <td><span class="badge badge-blue">${r.TenTP}</span></td>
+      <td><span class="badge badge-gold">${r.SoPhong} phòng</span></td>
+      <td><div class="actions">
+        <button class="btn-action btn-edit" onclick='editRap(${JSON.stringify(r)})'>✏️ Sửa</button>
+        <button class="btn-action btn-delete" onclick="deleteRap('${r.MaRap}')">🗑️ Xóa</button>
+      </div></td>
+    </tr>`).join('');
+}
+
+function formRap(data = {}) {
+  document.getElementById('modal-form-title').textContent = data.MaRap ? 'Sửa rạp chiếu phim' : 'Thêm rạp chiếu phim';
+  document.getElementById('modal-form-body').innerHTML = `
+    <div class="form-grid">
+      <div class="form-group"><label class="form-label">Mã rạp *</label>
+        <input class="form-input" id="f-MaRap" value="${data.MaRap||''}" ${data.MaRap?'readonly':''}></div>
+      <div class="form-group"><label class="form-label">Thành phố *</label>
+        <select class="form-select" id="f-MaTP">
+          ${allTP.map(tp => `<option value="${tp.MaTP}" ${data.MaTP===tp.MaTP?'selected':''}>${tp.TenTP}</option>`).join('')}
+        </select></div>
+      <div class="form-group full"><label class="form-label">Tên rạp *</label>
+        <input class="form-input" id="f-TenRap" value="${data.TenRap||''}"></div>
+      <div class="form-group full"><label class="form-label">Địa chỉ *</label>
+        <input class="form-input" id="f-DiaChi" value="${data.DiaChi||''}"></div>
+    </div>`;
+  formEntity = 'rap';
+  openModal('modal-form');
+}
+
+async function submitRap() {
+  const d = { MaRap: v('f-MaRap'), TenRap: v('f-TenRap'), DiaChi: v('f-DiaChi'), MaTP: v('f-MaTP') };
+  if (!d.MaRap || !d.TenRap || !d.DiaChi) { toast('Nhập đầy đủ thông tin', 'error'); return; }
+  const url = formMode === 'add' ? '/api/rap' : `/api/rap/${editId}`;
+  const r = await apiFetch(url, { method: formMode==='add'?'POST':'PUT', body: JSON.stringify(d) });
+  if (r?.success) { toast('Lưu thành công!', 'success'); closeModal('modal-form'); loadRap(); }
+  else toast(r?.error || 'Lỗi', 'error');
+}
+
+function editRap(data) { formMode='edit'; editId=data.MaRap; formRap(data); }
+function deleteRap(id) {
+  confirmDeleteFn(`Xóa rạp mã "${id}"? Toàn bộ phòng sẽ bị xóa theo!`, async () => {
+    const r = await apiFetch(`/api/rap/${id}`, { method: 'DELETE' });
+    if (r?.success) { toast('Đã xóa!', 'success'); loadRap(); }
+    else toast(r?.error || 'Lỗi', 'error');
+  });
+}
+
+// =====================================================
+// PHÒNG
+// =====================================================
+async function loadPhong() {
+  const maRap = document.getElementById('filter-phong-rap')?.value || '';
+  const data = await apiFetch('/api/phong' + (maRap ? `?maRap=${maRap}` : ''));
+  allPhong = data || [];
+  populateSelect('filter-ghe-phong', allPhong, 'MaPhong', r => `${r.TenPhong} — ${r.TenRap}`, 'Chọn phòng để xem ghế');
+  const tb = document.getElementById('tb-phong');
+  if (!data?.length) { tb.innerHTML = emptyRow(6); return; }
+  tb.innerHTML = data.map(r => `
+    <tr>
+      <td class="td-id">${r.MaPhong}</td>
+      <td class="td-name">${r.TenPhong}</td>
+      <td>${r.TenRap}</td>
+      <td><span class="badge badge-blue">${r.TenTP}</span></td>
+      <td><span class="badge badge-gold">${r.SoGhe} ghế</span></td>
+      <td><div class="actions">
+        <button class="btn-action btn-edit" onclick='editPhong(${JSON.stringify(r)})'>✏️ Sửa</button>
+        <button class="btn-action btn-delete" onclick="deletePhong('${r.MaPhong}')">🗑️ Xóa</button>
+      </div></td>
+    </tr>`).join('');
+}
+
+function formPhong(data = {}) {
+  document.getElementById('modal-form-title').textContent = data.MaPhong ? 'Sửa phòng chiếu' : 'Thêm phòng chiếu';
+  document.getElementById('modal-form-body').innerHTML = `
+    <div class="form-grid">
+      <div class="form-group"><label class="form-label">Mã phòng *</label>
+        <input class="form-input" id="f-MaPhong" value="${data.MaPhong||''}" ${data.MaPhong?'readonly':''}></div>
+      <div class="form-group"><label class="form-label">Rạp *</label>
+        <select class="form-select" id="f-MaRap">
+          ${allRap.map(r => `<option value="${r.MaRap}" ${data.MaRap===r.MaRap?'selected':''}>${r.TenRap}</option>`).join('')}
+        </select></div>
+      <div class="form-group full"><label class="form-label">Tên phòng *</label>
+        <input class="form-input" id="f-TenPhong" value="${data.TenPhong||''}"></div>
+    </div>`;
+  formEntity = 'phong';
+  openModal('modal-form');
+}
+
+async function submitPhong() {
+  const d = { MaPhong: v('f-MaPhong'), TenPhong: v('f-TenPhong'), MaRap: v('f-MaRap') };
+  const url = formMode === 'add' ? '/api/phong' : `/api/phong/${editId}`;
+  const r = await apiFetch(url, { method: formMode==='add'?'POST':'PUT', body: JSON.stringify(d) });
+  if (r?.success) { toast('Lưu thành công!', 'success'); closeModal('modal-form'); loadPhong(); }
+  else toast(r?.error || 'Lỗi', 'error');
+}
+
+function editPhong(data) { formMode='edit'; editId=data.MaPhong; formPhong(data); }
+function deletePhong(id) {
+  confirmDeleteFn(`Xóa phòng "${id}"?`, async () => {
+    const r = await apiFetch(`/api/phong/${id}`, { method: 'DELETE' });
+    if (r?.success) { toast('Đã xóa!', 'success'); loadPhong(); }
+    else toast(r?.error || 'Lỗi', 'error');
+  });
+}
+
+// =====================================================
+// GHẾ
+// =====================================================
+async function loadGhe() {
+  const maPhong = document.getElementById('filter-ghe-phong')?.value || '';
+  if (!maPhong) { document.getElementById('tb-ghe').innerHTML = emptyRow(6, 'Chọn phòng để xem danh sách ghế'); return; }
+  const data = await apiFetch(`/api/ghe?maPhong=${maPhong}`);
+  const tb = document.getElementById('tb-ghe');
+  if (!data?.length) { tb.innerHTML = emptyRow(6); return; }
+  tb.innerHTML = data.map(r => `
+    <tr>
+      <td class="td-id">${r.MaGhe}</td>
+      <td>${r.TenPhong}</td>
+      <td>${r.TenRap}</td>
+      <td><strong>${r.ViTri}</strong></td>
+      <td><span class="badge ${r.LoaiGhe==='VIP'?'badge-gold':'badge-gray'}">${r.LoaiGhe}</span></td>
+      <td><div class="actions">
+        <button class="btn-action btn-delete" onclick="deleteGhe('${r.MaGhe}')">🗑️ Xóa</button>
+      </div></td>
+    </tr>`).join('');
+}
+
+function deleteGhe(id) {
+  confirmDeleteFn(`Xóa ghế mã "${id}"?`, async () => {
+    const r = await apiFetch(`/api/ghe/${id}`, { method: 'DELETE' });
+    if (r?.success) { toast('Đã xóa!', 'success'); loadGhe(); }
+    else toast(r?.error || 'Lỗi', 'error');
+  });
+}
+
+// =====================================================
+// PHIM
+// =====================================================
+const GENRE_ICONS = { 'Hành động':'💥','Viễn tưởng':'🚀','Hài':'😂','Drama':'🎭',
+  'Kinh dị':'👻','Hoạt hình':'🎨','Tình cảm':'❤️','Lịch sử':'📜','Tài liệu':'📽️' };
+
+async function loadPhim() {
+  const search = document.getElementById('search-phim')?.value || '';
+  const tl = document.getElementById('filter-theloai')?.value || '';
+  let url = '/api/phim?';
+  if (search) url += `search=${encodeURIComponent(search)}&`;
+  if (tl) url += `theloai=${encodeURIComponent(tl)}`;
+  const data = await apiFetch(url);
+  allPhim = data || [];
+  const grid = document.getElementById('movie-grid');
+  if (!data?.length) { grid.innerHTML = `<div class="empty-state"><div class="empty-icon">🎬</div><p>Không tìm thấy phim</p></div>`; return; }
+  
+  grid.innerHTML = data.map(r => {
+    const icon = Object.entries(GENRE_ICONS).find(([k]) => r.TheLoai.includes(k))?.[1] || '🎬';
+    return `
+    <div class="movie-card" onclick='showMovieDetail(${JSON.stringify(r)})'>
+      <div class="movie-poster">${icon}</div>
+      <div class="movie-info">
+        <div class="movie-title">${r.TenPhim}</div>
+        <div class="movie-meta">
+          <span class="movie-genre-badge">${r.TheLoai.split('/')[0].trim()}</span>
+          <span class="movie-duration">⏱ ${r.ThoiLuong} phút</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function showMovieDetail(r) {
+  document.getElementById('modal-movie-title').textContent = r.TenPhim;
+  document.getElementById('modal-movie-body').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px">
+      <div><span style="color:var(--muted)">Đạo diễn</span><div style="font-weight:600;margin-top:2px">${r.DaoDien}</div></div>
+      <div><span style="color:var(--muted)">Quốc gia</span><div style="font-weight:600;margin-top:2px">${r.QuocGia}</div></div>
+      <div><span style="color:var(--muted)">Thể loại</span><div style="font-weight:600;margin-top:2px">${r.TheLoai}</div></div>
+      <div><span style="color:var(--muted)">Thời lượng</span><div style="font-weight:600;margin-top:2px">${r.ThoiLuong} phút</div></div>
+      <div><span style="color:var(--muted)">Khởi chiếu</span><div style="font-weight:600;margin-top:2px">${fmtDate(r.NgayKhoiChieu)}</div></div>
+      <div><span style="color:var(--muted)">Số suất</span><div style="font-weight:600;margin-top:2px">${r.SoSuat} suất</div></div>
+    </div>
+    ${r.MoTa ? `<p style="color:var(--muted);font-size:13px;line-height:1.6;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">${r.MoTa}</p>` : ''}
+    <div style="display:flex;gap:8px;margin-top:18px">
+      <button class="btn btn-ghost" onclick='editPhim(${JSON.stringify(r)});closeModal("modal-movie")' style="flex:1">✏️ Sửa</button>
+      <button class="btn btn-danger" onclick='deletePhim("${r.MaPhim}");closeModal("modal-movie")'>🗑️ Xóa</button>
+    </div>`;
+  openModal('modal-movie');
+}
+
+function formPhim(data = {}) {
+  document.getElementById('modal-form-title').textContent = data.MaPhim ? 'Sửa phim' : 'Thêm phim';
+  document.getElementById('modal-form-body').innerHTML = `
+    <div class="form-grid">
+      <div class="form-group"><label class="form-label">Mã phim *</label>
+        <input class="form-input" id="f-MaPhim" value="${data.MaPhim||''}" ${data.MaPhim?'readonly':''}></div>
+      <div class="form-group"><label class="form-label">Ngày khởi chiếu *</label>
+        <input class="form-input" type="date" id="f-NgayKhoiChieu" value="${fmtDateInput(data.NgayKhoiChieu)}"></div>
+      <div class="form-group full"><label class="form-label">Tên phim *</label>
+        <input class="form-input" id="f-TenPhim" value="${data.TenPhim||''}"></div>
+      <div class="form-group"><label class="form-label">Đạo diễn *</label>
+        <input class="form-input" id="f-DaoDien" value="${data.DaoDien||''}"></div>
+      <div class="form-group"><label class="form-label">Quốc gia *</label>
+        <input class="form-input" id="f-QuocGia" value="${data.QuocGia||''}"></div>
+      <div class="form-group"><label class="form-label">Thể loại *</label>
+        <input class="form-input" id="f-TheLoai" value="${data.TheLoai||''}"></div>
+      <div class="form-group"><label class="form-label">Thời lượng (phút) *</label>
+        <input class="form-input" type="number" id="f-ThoiLuong" value="${data.ThoiLuong||''}"></div>
+      <div class="form-group full"><label class="form-label">Mô tả</label>
+        <textarea class="form-textarea" id="f-MoTa">${data.MoTa||''}</textarea></div>
+    </div>`;
+  formEntity = 'phim';
+  openModal('modal-form');
+}
+
+async function submitPhim() {
+  const d = { MaPhim:v('f-MaPhim'), TenPhim:v('f-TenPhim'), DaoDien:v('f-DaoDien'),
+    QuocGia:v('f-QuocGia'), TheLoai:v('f-TheLoai'), ThoiLuong:v('f-ThoiLuong'),
+    NgayKhoiChieu:v('f-NgayKhoiChieu'), MoTa:v('f-MoTa') };
+  const url = formMode==='add' ? '/api/phim' : `/api/phim/${editId}`;
+  const r = await apiFetch(url, { method: formMode==='add'?'POST':'PUT', body: JSON.stringify(d) });
+  if (r?.success) { toast('Lưu thành công!', 'success'); closeModal('modal-form'); loadPhim(); }
+  else toast(r?.error||'Lỗi','error');
+}
+
+function editPhim(data) { formMode='edit'; editId=data.MaPhim; formPhim(data); }
+function deletePhim(id) {
+  confirmDeleteFn(`Xóa phim mã "${id}"?`, async () => {
+    const r = await apiFetch(`/api/phim/${id}`, { method:'DELETE' });
+    if (r?.success) { toast('Đã xóa!', 'success'); loadPhim(); }
+    else toast(r?.error||'Lỗi','error');
+  });
+}
+
+// =====================================================
+// SUẤT CHIẾU
+// =====================================================
+async function loadSuatChieu() {
+  const ngay = document.getElementById('filter-ngay')?.value || '';
+  const data = await apiFetch('/api/suatchieu' + (ngay ? `?ngay=${ngay}` : ''));
+  
+  // populate rap filter
+  const rapSet = {}; (data||[]).forEach(r => rapSet[r.TenRap] = true);
+  const rapSel = document.getElementById('filter-sc-rap');
+  if (rapSel.options.length <= 1) {
+    Object.keys(rapSet).forEach(tn => { const o = new Option(tn, tn); rapSel.add(o); });
+  }
+
+  const tb = document.getElementById('tb-suatchieu');
+  if (!data?.length) { tb.innerHTML = emptyRow(8); return; }
+  
+  const rapFilter = rapSel?.value || '';
+  const filtered = rapFilter ? data.filter(r => r.TenRap === rapFilter) : data;
+  
+  tb.innerHTML = filtered.map(r => `
+    <tr>
+      <td class="td-id">${r.MaSchieu}</td>
+      <td><div class="td-name">${r.TenPhim}</div><div class="td-sub">⏱ ${r.ThoiLuong} phút</div></td>
+      <td><div class="td-name">${r.TenPhong}</div><div class="td-sub">${r.TenRap}</div></td>
+      <td>${fmtDate(r.NgayChieu)}</td>
+      <td><strong>${fmtTime(r.ThoiGianBd)}</strong> → ${fmtTime(r.ThoiGianKt)}</td>
+      <td><span class="badge ${r.HeSoGia>1?'badge-gold':'badge-gray'}">x${r.HeSoGia}</span></td>
+      <td>
+        <div style="font-size:12px;color:var(--muted)">${r.SoVeDaBan}/${r.TongGhe}</div>
+        <div style="height:4px;background:var(--border);border-radius:2px;margin-top:4px;width:60px">
+          <div style="height:100%;background:var(--gold);border-radius:2px;width:${(r.SoVeDaBan/Math.max(r.TongGhe,1)*100).toFixed(0)}%"></div>
+        </div>
+      </td>
+      <td><div class="actions">
+        <button class="btn-action btn-view" onclick="viewSeatMap('${r.MaSchieu}','${esc(r.TenPhim)}')">🗺️ Sơ đồ</button>
+        <button class="btn-action btn-edit" onclick='editSuatChieu(${JSON.stringify(r)})'>✏️</button>
+        <button class="btn-action btn-delete" onclick="deleteSuatChieu('${r.MaSchieu}')">🗑️</button>
+      </div></td>
+    </tr>`).join('');
+}
+
+function filterSuatChieuByRap() { loadSuatChieu(); }
+
+async function viewSeatMap(maSchieu, tenPhim) {
+  document.getElementById('modal-seat-title').textContent = `Sơ đồ ghế — ${tenPhim}`;
+  document.getElementById('modal-seat-body').innerHTML = `<div class="loading"><div class="spinner"></div>Đang tải sơ đồ...</div>`;
+  openModal('modal-seat');
+  
+  const data = await apiFetch(`/api/suatchieu/${maSchieu}/soghe`);
+  if (!data) { document.getElementById('modal-seat-body').innerHTML = '<p>Lỗi tải dữ liệu</p>'; return; }
+  
+  const rows = {};
+  data.forEach(g => {
+    const row = g.ViTri[0];
+    if (!rows[row]) rows[row] = [];
+    rows[row].push(g);
+  });
+  
+  let html = `
+    <div class="seat-legend">
+      <span><span class="legend-dot" style="background:var(--border)"></span> Trống</span>
+      <span><span class="legend-dot" style="background:rgba(201,168,76,0.3)"></span> VIP</span>
+      <span><span class="legend-dot" style="background:rgba(229,76,76,0.3)"></span> Đã đặt</span>
+    </div>
+    <div class="seat-screen"></div>
+    <div class="seat-screen-label">— Màn hình —</div>
+    <div class="seat-grid">`;
+  
+  Object.entries(rows).sort().forEach(([row, seats]) => {
+    html += `<div class="seat-row"><div class="seat-row-label">${row}</div>`;
+    seats.sort((a,b) => a.ViTri.localeCompare(b.ViTri)).forEach(s => {
+      const cls = s.TrangThai==='Đã đặt' ? 'booked' : (s.LoaiGhe==='VIP' ? 'vip' : 'empty');
+      html += `<button class="seat ${cls}" title="${s.ViTri} — ${s.LoaiGhe} — ${s.TrangThai}">${s.ViTri.slice(1)}</button>`;
+    });
+    html += `</div>`;
+  });
+  
+  html += `</div>
+    <div style="text-align:center;margin-top:16px;font-size:12px;color:var(--muted)">
+      Tổng: ${data.length} ghế | Đã đặt: ${data.filter(g=>g.TrangThai==='Đã đặt').length} | Còn trống: ${data.filter(g=>g.TrangThai!=='Đã đặt').length}
+    </div>`;
+  
+  document.getElementById('modal-seat-body').innerHTML = html;
+}
+
+function formSuatChieu(data = {}) {
+  document.getElementById('modal-form-title').textContent = data.MaSchieu ? 'Sửa suất chiếu' : 'Thêm suất chiếu';
+  document.getElementById('modal-form-body').innerHTML = `
+    <div class="form-grid">
+      <div class="form-group"><label class="form-label">Mã suất *</label>
+        <input class="form-input" id="f-MaSchieu" value="${data.MaSchieu||''}" ${data.MaSchieu?'readonly':''}></div>
+      <div class="form-group"><label class="form-label">Ngày chiếu *</label>
+        <input class="form-input" type="date" id="f-NgayChieu" value="${fmtDateInput(data.NgayChieu)}"></div>
+      <div class="form-group"><label class="form-label">Phim *</label>
+        <select class="form-select" id="f-MaPhim">
+          ${allPhim.map(p => `<option value="${p.MaPhim}" ${data.MaPhim===p.MaPhim?'selected':''}>${p.TenPhim}</option>`).join('')}
+        </select></div>
+      <div class="form-group"><label class="form-label">Phòng *</label>
+        <select class="form-select" id="f-MaPhong">
+          ${allPhong.map(p => `<option value="${p.MaPhong}" ${data.MaPhong===p.MaPhong?'selected':''}>${p.TenPhong} — ${p.TenRap||''}</option>`).join('')}
+        </select></div>
+      <div class="form-group"><label class="form-label">Giờ bắt đầu *</label>
+        <input class="form-input" type="time" id="f-ThoiGianBd" value="${data.ThoiGianBd||''}"></div>
+      <div class="form-group"><label class="form-label">Giờ kết thúc *</label>
+        <input class="form-input" type="time" id="f-ThoiGianKt" value="${data.ThoiGianKt||''}"></div>
+      <div class="form-group full"><label class="form-label">Hệ số giá (1.0 = giá gốc)</label>
+        <input class="form-input" type="number" step="0.1" min="0.5" max="5" id="f-HeSoGia" value="${data.HeSoGia||1.0}"></div>
+    </div>`;
+  formEntity = 'suatchieu';
+  openModal('modal-form');
+}
+
+async function submitSuatChieu() {
+  const d = { MaSchieu:v('f-MaSchieu'), MaPhim:v('f-MaPhim'), MaPhong:v('f-MaPhong'),
+    NgayChieu:v('f-NgayChieu'), ThoiGianBd:v('f-ThoiGianBd'), ThoiGianKt:v('f-ThoiGianKt'),
+    HeSoGia:v('f-HeSoGia') };
+  const url = formMode==='add' ? '/api/suatchieu' : `/api/suatchieu/${editId}`;
+  const r = await apiFetch(url, { method: formMode==='add'?'POST':'PUT', body: JSON.stringify(d) });
+  if (r?.success) { toast('Lưu thành công!', 'success'); closeModal('modal-form'); loadSuatChieu(); }
+  else toast(r?.error||'Lỗi','error');
+}
+
+function editSuatChieu(data) { formMode='edit'; editId=data.MaSchieu; formSuatChieu(data); }
+function deleteSuatChieu(id) {
+  confirmDeleteFn(`Xóa suất chiếu "${id}"?`, async () => {
+    const r = await apiFetch(`/api/suatchieu/${id}`, { method:'DELETE' });
+    if (r?.success) { toast('Đã xóa!', 'success'); loadSuatChieu(); }
+    else toast(r?.error||'Lỗi','error');
+  });
+}
+
+// =====================================================
+// VÉ
+// =====================================================
+async function loadVe() {
+  const tt = document.getElementById('filter-ve-tt')?.value || '';
+  const data = await apiFetch('/api/ve' + (tt ? `?trangThai=${encodeURIComponent(tt)}` : ''));
+  const tb = document.getElementById('tb-ve');
+  if (!data?.length) { tb.innerHTML = emptyRow(9); return; }
+  tb.innerHTML = data.map(r => `
+    <tr>
+      <td class="td-id">${r.MaVe}</td>
+      <td><div class="td-name">${r.HoTen}</div><div class="td-sub">${r.Sdt}</div></td>
+      <td class="td-name">${r.TenPhim}</td>
+      <td><div>${r.TenPhong}</div><div class="td-sub">${r.TenRap}</div></td>
+      <td><strong>${r.ViTri}</strong></td>
+      <td style="font-size:12px">${fmtDateTime(r.NgayDat)}</td>
+      <td><strong style="color:var(--gold)">${fmtMoney(r.ThanhTien)}</strong></td>
+      <td><span class="badge ${r.TrangThai==='Đã đặt'?'badge-green':r.TrangThai==='Đã hủy'?'badge-red':'badge-gray'}">${r.TrangThai}</span></td>
+      <td><div class="actions">
+        ${r.TrangThai==='Đã đặt'?`<button class="btn-action btn-delete" onclick="huyVe('${r.MaVe}')">❌ Hủy</button>`:''}
+      </div></td>
+    </tr>`).join('');
+}
+
+function formVe(data = {}) {
+  document.getElementById('modal-form-title').textContent = 'Đặt vé mới';
+  document.getElementById('modal-form-body').innerHTML = `
+    <div class="form-grid">
+      <div class="form-group"><label class="form-label">Mã khách hàng *</label>
+        <input class="form-input" id="f-MaKH" placeholder="VD: KH001"></div>
+      <div class="form-group"><label class="form-label">Suất chiếu *</label>
+        <select class="form-select" id="f-MaSchieu" onchange="loadGheForVe()">
+          <option value="">Chọn suất chiếu</option>
+        </select></div>
+      <div class="form-group"><label class="form-label">Phòng *</label>
+        <input class="form-input" id="f-MaPhong" placeholder="Tự động từ suất chiếu" readonly></div>
+      <div class="form-group"><label class="form-label">Vị trí ghế *</label>
+        <select class="form-select" id="f-ViTri"><option>Chọn suất chiếu trước</option></select></div>
+      <div class="form-group full"><label class="form-label">Giá gốc (VNĐ) *</label>
+        <input class="form-input" type="number" id="f-GiaGoc" value="100000"></div>
+    </div>`;
+  formEntity = 've';
+  
+  // Populate suất chiếu
+  apiFetch('/api/suatchieu').then(data => {
+    if (!data) return;
+    const sel = document.getElementById('f-MaSchieu');
+    data.forEach(sc => {
+      const o = new Option(`${sc.MaSchieu} — ${sc.TenPhim} (${fmtDate(sc.NgayChieu)} ${fmtTime(sc.ThoiGianBd)})`, sc.MaSchieu);
+      o.dataset.maPhong = sc.MaPhong;
+      sel.add(o);
+    });
+  });
+  
+  openModal('modal-form');
+}
+
+async function loadGheForVe() {
+  const sel = document.getElementById('f-MaSchieu');
+  const maSchieu = sel.value;
+  if (!maSchieu) return;
+  const opt = sel.options[sel.selectedIndex];
+  document.getElementById('f-MaPhong').value = opt.dataset.maPhong || '';
+  
+  const data = await apiFetch(`/api/suatchieu/${maSchieu}/soghe`);
+  const gheSel = document.getElementById('f-ViTri');
+  gheSel.innerHTML = '';
+  (data||[]).filter(g => g.TrangThai !== 'Đã đặt').forEach(g => {
+    gheSel.add(new Option(`${g.ViTri} (${g.LoaiGhe})`, g.ViTri));
+  });
+  if (!gheSel.options.length) gheSel.add(new Option('Không còn ghế trống', ''));
+}
+
+async function submitVe() {
+  const d = { MaKH:v('f-MaKH'), MaSchieu:v('f-MaSchieu'), MaPhong:v('f-MaPhong'),
+    ViTri:v('f-ViTri'), GiaGoc:v('f-GiaGoc') };
+  if (!d.MaKH || !d.MaSchieu || !d.ViTri) { toast('Nhập đầy đủ thông tin', 'error'); return; }
+  const r = await apiFetch('/api/ve', { method:'POST', body: JSON.stringify(d) });
+  if (r?.success) { toast(`Đặt vé thành công! Mã vé: ${r.MaVe}`, 'success'); closeModal('modal-form'); loadVe(); }
+  else toast(r?.error||'Lỗi','error');
+}
+
+function huyVe(id) {
+  confirmDeleteFn(`Hủy vé mã "${id}"?`, async () => {
+    const r = await apiFetch(`/api/ve/${id}/huy`, { method:'PUT' });
+    if (r?.success) { toast('Đã hủy vé!', 'success'); loadVe(); }
+    else toast(r?.error||'Lỗi','error');
+  });
+}
+
+// =====================================================
+// KHÁCH HÀNG
+// =====================================================
+async function loadKhachHang() {
+  const search = document.getElementById('search-kh')?.value || '';
+  const data = await apiFetch('/api/khachhang' + (search ? `?search=${encodeURIComponent(search)}` : ''));
+  const tb = document.getElementById('tb-khachhang');
+  if (!data?.length) { tb.innerHTML = emptyRow(8); return; }
+  tb.innerHTML = data.map(r => `
+    <tr>
+      <td class="td-id">${r.MaKH}</td>
+      <td class="td-name">${r.HoTen}</td>
+      <td>${r.Sdt}</td>
+      <td style="color:var(--muted);font-size:12px">${r.Email||'—'}</td>
+      <td><span class="badge badge-gold">⭐ ${r.DiemTichLuy}</span></td>
+      <td><strong style="color:var(--green)">${fmtMoney(r.TongChiTieu)}</strong></td>
+      <td>${r.TongVe} vé</td>
+      <td><div class="actions">
+        <button class="btn-action btn-edit" onclick='editKhachHang(${JSON.stringify(r)})'>✏️ Sửa</button>
+        <button class="btn-action btn-delete" onclick="deleteKhachHang('${r.MaKH}')">🗑️ Xóa</button>
+      </div></td>
+    </tr>`).join('');
+}
+
+function formKhachHang(data = {}) {
+  document.getElementById('modal-form-title').textContent = data.MaKH ? 'Sửa khách hàng' : 'Thêm khách hàng';
+  document.getElementById('modal-form-body').innerHTML = `
+    <div class="form-grid">
+      <div class="form-group"><label class="form-label">Mã KH *</label>
+        <input class="form-input" id="f-MaKH" value="${data.MaKH||''}" ${data.MaKH?'readonly':''}></div>
+      <div class="form-group"><label class="form-label">Họ tên *</label>
+        <input class="form-input" id="f-HoTen" value="${data.HoTen||''}"></div>
+      <div class="form-group"><label class="form-label">SĐT *</label>
+        <input class="form-input" id="f-Sdt" value="${data.Sdt||''}"></div>
+      <div class="form-group"><label class="form-label">Email</label>
+        <input class="form-input" type="email" id="f-Email" value="${data.Email||''}"></div>
+      <div class="form-group full"><label class="form-label">Điểm tích lũy</label>
+        <input class="form-input" type="number" id="f-DiemTichLuy" value="${data.DiemTichLuy||0}"></div>
+    </div>`;
+  formEntity = 'khachhang';
+  openModal('modal-form');
+}
+
+async function submitKhachHang() {
+  const d = { MaKH:v('f-MaKH'), HoTen:v('f-HoTen'), Sdt:v('f-Sdt'),
+    Email:v('f-Email'), DiemTichLuy:v('f-DiemTichLuy') };
+  const url = formMode==='add' ? '/api/khachhang' : `/api/khachhang/${editId}`;
+  const r = await apiFetch(url, { method: formMode==='add'?'POST':'PUT', body: JSON.stringify(d) });
+  if (r?.success) { toast('Lưu thành công!', 'success'); closeModal('modal-form'); loadKhachHang(); }
+  else toast(r?.error||'Lỗi','error');
+}
+
+function editKhachHang(data) { formMode='edit'; editId=data.MaKH; formKhachHang(data); }
+function deleteKhachHang(id) {
+  confirmDeleteFn(`Xóa khách hàng "${id}"?`, async () => {
+    const r = await apiFetch(`/api/khachhang/${id}`, { method:'DELETE' });
+    if (r?.success) { toast('Đã xóa!', 'success'); loadKhachHang(); }
+    else toast(r?.error||'Lỗi','error');
+  });
+}
+
+// =====================================================
+// UTILITIES
+// =====================================================
+function v(id) { const el = document.getElementById(id); return el ? el.value.trim() : ''; }
+function esc(s) { return String(s||'').replace(/'/g,"&#39;").replace(/"/g,'&quot;'); }
+function emptyRow(cols, msg='Không có dữ liệu') {
+  return `<tr><td colspan="${cols}" style="text-align:center;padding:40px;color:var(--muted)">${msg}</td></tr>`;
+}
+function fmtMoney(n) {
+  return new Intl.NumberFormat('vi-VN', { style:'currency', currency:'VND' }).format(n||0);
+}
+function fmtDate(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('vi-VN');
+}
+function fmtDateInput(d) {
+  if (!d) return '';
+  return new Date(d).toISOString().split('T')[0];
+}
+function fmtDateTime(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleString('vi-VN');
+}
+function fmtTime(t) {
+  if (!t) return '—';
+  return String(t).slice(0,5);
+}
+function populateSelect(id, data, valKey, labelFn, placeholder, selectedVal='') {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const cur = selectedVal || el.value;
+  el.innerHTML = `<option value="">${placeholder}</option>`;
+  (data||[]).forEach(r => {
+    const val = r[valKey];
+    const lbl = typeof labelFn === 'function' ? labelFn(r) : r[labelFn];
+    const o = new Option(lbl, val);
+    if (val === cur) o.selected = true;
+    el.add(o);
+  });
+}
+
+// =====================================================
+// INIT
+// =====================================================
+async function init() {
+  // Preload shared data
+  [allTP, allRap, allPhong, allPhim] = await Promise.all([
+    apiFetch('/api/thanhpho'),
+    apiFetch('/api/rap'),
+    apiFetch('/api/phong'),
+    apiFetch('/api/phim'),
+  ]);
+  allTP = allTP || []; allRap = allRap || [];
+  allPhong = allPhong || []; allPhim = allPhim || [];
+
+  // Init filter dropdowns
+  populateSelect('filter-rap-tp', allTP, 'MaTP', 'TenTP', 'Tất cả thành phố');
+  populateSelect('filter-phong-rap', allRap, 'MaRap', 'TenRap', 'Tất cả rạp');
+  populateSelect('filter-ghe-phong', allPhong, 'MaPhong', r=>`${r.TenPhong} — ${r.TenRap||''}`, 'Chọn phòng để xem ghế');
+  populateSelect('filter-sc-rap', allRap, 'MaRap', 'TenRap', 'Tất cả rạp');
+
+  // Load dashboard
+  loadDashboard();
+
+  // Close modal on overlay click
+  document.querySelectorAll('.modal-overlay').forEach(el => {
+    el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
+  });
+}
+
+init();
+</script>
+</body>
+</html>
