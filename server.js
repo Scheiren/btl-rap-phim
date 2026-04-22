@@ -4,6 +4,7 @@ const sql = require('mssql');
 const cors = require('cors');
 const morgan = require('morgan');
 const path = require('path');
+const jwt = require('jsonwebtoken');
 
 const app = express();
 
@@ -46,6 +47,41 @@ async function query(queryStr, params = {}) {
   return req.query(queryStr);
 }
 
+// Xác thực qua JWT
+function authenticateToken(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ error: 'Truy cập bị từ chối. Vui lòng đăng nhập.' });
+  }
+
+  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+    if (err) {
+      return res.status(403).json({ error: 'Token không hợp lệ hoặc đã hết hạn.' });
+    }
+    req.user = user;
+    next();
+  });
+}
+
+// =====================================================
+// ROUTES — XÁC THỰC (AUTH)
+// =====================================================
+app.post('/api/admin/login', (req, res) => {
+  const { username, password } = req.body;
+
+  if (username === process.env.ADMIN_USERNAME && password === process.env.ADMIN_PASSWORD) {
+    const userPayload = { username: username, role: 'admin' };
+    
+    const accessToken = jwt.sign(userPayload, process.env.JWT_SECRET, { expiresIn: '2h' });
+    
+    res.json({ success: true, token: accessToken });
+  } else {
+    res.status(401).json({ error: 'Sai tên đăng nhập hoặc mật khẩu.' });
+  }
+});
+
 // =====================================================
 // ROUTES — THÀNH PHỐ
 // =====================================================
@@ -56,7 +92,7 @@ app.get('/api/thanhpho', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/api/thanhpho', async (req, res) => {
+app.post('/api/thanhpho', authenticateToken, async (req, res) => {
   const { MaTP, TenTP } = req.body;
   try {
     await query('INSERT INTO ThanhPho VALUES (@MaTP, @TenTP)', { MaTP, TenTP });
@@ -64,7 +100,7 @@ app.post('/api/thanhpho', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.put('/api/thanhpho/:id', async (req, res) => {
+app.put('/api/thanhpho/:id', authenticateToken, async (req, res) => {
   const { TenTP } = req.body;
   try {
     await query('UPDATE ThanhPho SET TenTP=@TenTP WHERE MaTP=@MaTP',
@@ -73,7 +109,7 @@ app.put('/api/thanhpho/:id', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.delete('/api/thanhpho/:id', async (req, res) => {
+app.delete('/api/thanhpho/:id', authenticateToken, async (req, res) => {
   try {
     await query('DELETE FROM ThanhPho WHERE MaTP=@MaTP', { MaTP: req.params.id });
     res.json({ success: true });
@@ -106,7 +142,7 @@ app.get('/api/rap/:id', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/api/rap', async (req, res) => {
+app.post('/api/rap', authenticateToken, async (req, res) => {
   const { MaRap, TenRap, DiaChi, MaTP } = req.body;
   try {
     await query('INSERT INTO RapChieuPhim VALUES (@MaRap,@TenRap,@DiaChi,@MaTP)',
@@ -115,7 +151,7 @@ app.post('/api/rap', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.put('/api/rap/:id', async (req, res) => {
+app.put('/api/rap/:id', authenticateToken, async (req, res) => {
   const { TenRap, DiaChi, MaTP } = req.body;
   try {
     await query('UPDATE RapChieuPhim SET TenRap=@TenRap,DiaChi=@DiaChi,MaTP=@MaTP WHERE MaRap=@MaRap',
@@ -124,7 +160,7 @@ app.put('/api/rap/:id', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.delete('/api/rap/:id', async (req, res) => {
+app.delete('/api/rap/:id', authenticateToken, async (req, res) => {
   try {
     await query('DELETE FROM RapChieuPhim WHERE MaRap=@MaRap', { MaRap: req.params.id });
     res.json({ success: true });
@@ -149,7 +185,7 @@ app.get('/api/phong', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/api/phong', async (req, res) => {
+app.post('/api/phong', authenticateToken, async (req, res) => {
   const { MaPhong, TenPhong, MaRap } = req.body;
   try {
     await query('INSERT INTO Phong VALUES (@MaPhong,@TenPhong,@MaRap)',
@@ -158,7 +194,7 @@ app.post('/api/phong', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.put('/api/phong/:id', async (req, res) => {
+app.put('/api/phong/:id', authenticateToken, async (req, res) => {
   const { TenPhong, MaRap } = req.body;
   try {
     await query('UPDATE Phong SET TenPhong=@TenPhong,MaRap=@MaRap WHERE MaPhong=@MaPhong',
@@ -167,7 +203,7 @@ app.put('/api/phong/:id', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.delete('/api/phong/:id', async (req, res) => {
+app.delete('/api/phong/:id', authenticateToken, async (req, res) => {
   try {
     await query('DELETE FROM Phong WHERE MaPhong=@MaPhong', { MaPhong: req.params.id });
     res.json({ success: true });
@@ -191,7 +227,7 @@ app.get('/api/ghe', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/api/ghe', async (req, res) => {
+app.post('/api/ghe', authenticateToken, async (req, res) => {
   const { MaGhe, MaPhong, ViTri, LoaiGhe } = req.body;
   try {
     await query('INSERT INTO Ghe VALUES (@MaGhe,@MaPhong,@ViTri,@LoaiGhe)',
@@ -200,7 +236,7 @@ app.post('/api/ghe', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.delete('/api/ghe/:id', async (req, res) => {
+app.delete('/api/ghe/:id', authenticateToken, async (req, res) => {
   try {
     await query('DELETE FROM Ghe WHERE MaGhe=@MaGhe', { MaGhe: req.params.id });
     res.json({ success: true });
@@ -230,7 +266,7 @@ app.get('/api/phim/:id', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/api/phim', async (req, res) => {
+app.post('/api/phim', authenticateToken, async (req, res) => {
   const { MaPhim, TenPhim, DaoDien, QuocGia, TheLoai, ThoiLuong, NgayKhoiChieu, MoTa } = req.body;
   try {
     await query(`INSERT INTO Phim(MaPhim,TenPhim,DaoDien,QuocGia,TheLoai,ThoiLuong,NgayKhoiChieu,MoTa)
@@ -240,7 +276,7 @@ app.post('/api/phim', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.put('/api/phim/:id', async (req, res) => {
+app.put('/api/phim/:id', authenticateToken, async (req, res) => {
   const { TenPhim, DaoDien, QuocGia, TheLoai, ThoiLuong, NgayKhoiChieu, MoTa } = req.body;
   try {
     await query(`UPDATE Phim SET TenPhim=@TenPhim,DaoDien=@DaoDien,QuocGia=@QuocGia,
@@ -251,7 +287,7 @@ app.put('/api/phim/:id', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.delete('/api/phim/:id', async (req, res) => {
+app.delete('/api/phim/:id', authenticateToken, async (req, res) => {
   try {
     await query('DELETE FROM Phim WHERE MaPhim=@MaPhim', { MaPhim: req.params.id });
     res.json({ success: true });
@@ -283,7 +319,7 @@ app.get('/api/suatchieu', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/api/suatchieu', async (req, res) => {
+app.post('/api/suatchieu', authenticateToken, async (req, res) => {
   const { MaSchieu, MaPhim, MaPhong, NgayChieu, ThoiGianBd, ThoiGianKt, HeSoGia } = req.body;
   try {
     await query(`INSERT INTO SuatChieu VALUES(@MaSchieu,@MaPhim,@MaPhong,@NgayChieu,@ThoiGianBd,@ThoiGianKt,@HeSoGia)`,
@@ -292,7 +328,7 @@ app.post('/api/suatchieu', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.put('/api/suatchieu/:id', async (req, res) => {
+app.put('/api/suatchieu/:id', authenticateToken, async (req, res) => {
   const { MaPhim, MaPhong, NgayChieu, ThoiGianBd, ThoiGianKt, HeSoGia } = req.body;
   try {
     await query(`UPDATE SuatChieu SET MaPhim=@MaPhim,MaPhong=@MaPhong,NgayChieu=@NgayChieu,
@@ -302,7 +338,7 @@ app.put('/api/suatchieu/:id', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.delete('/api/suatchieu/:id', async (req, res) => {
+app.delete('/api/suatchieu/:id', authenticateToken, async (req, res) => {
   try {
     await query('DELETE FROM SuatChieu WHERE MaSchieu=@MaSchieu', { MaSchieu: req.params.id });
     res.json({ success: true });
@@ -342,7 +378,7 @@ app.get('/api/khachhang', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/api/khachhang', async (req, res) => {
+app.post('/api/khachhang', authenticateToken, async (req, res) => {
   const { MaKH, HoTen, Sdt, Email } = req.body;
   try {
     await query('INSERT INTO KhachHang(MaKH,HoTen,Sdt,Email) VALUES(@MaKH,@HoTen,@Sdt,@Email)',
@@ -351,7 +387,7 @@ app.post('/api/khachhang', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.put('/api/khachhang/:id', async (req, res) => {
+app.put('/api/khachhang/:id', authenticateToken, async (req, res) => {
   const { HoTen, Sdt, Email, DiemTichLuy } = req.body;
   try {
     await query('UPDATE KhachHang SET HoTen=@HoTen,Sdt=@Sdt,Email=@Email,DiemTichLuy=@DiemTichLuy WHERE MaKH=@MaKH',
@@ -360,7 +396,7 @@ app.put('/api/khachhang/:id', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.delete('/api/khachhang/:id', async (req, res) => {
+app.delete('/api/khachhang/:id', authenticateToken, async (req, res) => {
   try {
     await query('DELETE FROM KhachHang WHERE MaKH=@MaKH', { MaKH: req.params.id });
     res.json({ success: true });
@@ -409,7 +445,7 @@ app.post('/api/ve', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.put('/api/ve/:id/huy', async (req, res) => {
+app.put('/api/ve/:id/huy', authenticateToken, async (req, res) => {
   try {
     await query(`UPDATE Ve SET TrangThai=N'Đã hủy' WHERE MaVe=@MaVe`, { MaVe: req.params.id });
     res.json({ success: true });
