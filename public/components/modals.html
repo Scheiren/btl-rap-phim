@@ -1,0 +1,49 @@
+<div class="modal-overlay" id="modal-form">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-form-title">Thêm mới</span>
+      <button class="modal-close" onclick="closeModal('modal-form')">✕</button>
+    </div>
+    <div class="modal-body" id="modal-form-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-form')">Hủy</button>
+      <button class="btn btn-primary" onclick="submitForm()">Lưu</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-seat">
+  <div class="modal" style="width:640px">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-seat-title">Sơ đồ phòng</span>
+      <button class="modal-close" onclick="closeModal('modal-seat')">✕</button>
+    </div>
+    <div class="modal-body" id="modal-seat-body"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-movie">
+  <div class="modal" style="width:500px">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-movie-title">Chi tiết phim</span>
+      <button class="modal-close" onclick="closeModal('modal-movie')">✕</button>
+    </div>
+    <div class="modal-body" id="modal-movie-body"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-delete">
+  <div class="modal" style="width:380px">
+    <div class="modal-header">
+      <span class="modal-title" style="color:var(--red)">Xác nhận xóa</span>
+      <button class="modal-close" onclick="closeModal('modal-delete')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="color:var(--muted);font-size:14px;line-height:1.6" id="delete-msg">Bạn có chắc chắn muốn xóa dữ liệu này?</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-delete')">Hủy</button>
+      <button class="btn btn-danger" onclick="confirmDelete()">Xóa</button>
+    </div>
+  </div>
+</div>

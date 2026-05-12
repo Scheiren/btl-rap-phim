@@ -1,0 +1,143 @@
+<div id="main">
+  <header id="topbar">
+    <h2 id="page-title">DASHBOARD</h2>
+    <div class="topbar-search">
+      <span>🔍</span>
+      <input type="text" id="global-search" placeholder="Tìm kiếm..." oninput="handleSearch(this.value)">
+    </div>
+    <button class="topbar-btn" id="add-btn" onclick="handleAdd()" style="display:none">
+      <span>＋</span> <span id="add-label">Thêm mới</span>
+    </button>
+  </header>
+
+  <div id="content">
+    <div id="page-dashboard" class="page active">
+      <div class="stats-grid" id="stats-grid">
+        <div class="stat-card"><div class="stat-icon">🎥</div><div class="stat-value" id="s-phim">—</div><div class="stat-label">Phim đang chiếu</div></div>
+        <div class="stat-card"><div class="stat-icon">🏟️</div><div class="stat-value" id="s-rap">—</div><div class="stat-label">Rạp chiếu phim</div></div>
+        <div class="stat-card"><div class="stat-icon">👥</div><div class="stat-value" id="s-khach">—</div><div class="stat-label">Khách hàng</div></div>
+        <div class="stat-card"><div class="stat-icon">🎫</div><div class="stat-value" id="s-ve">—</div><div class="stat-label">Vé đã bán</div></div>
+        <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-value" id="s-dt">—</div><div class="stat-label">Doanh thu (triệu)</div></div>
+      </div>
+      <div class="chart-grid">
+        <div class="chart-card">
+          <h3>Doanh thu theo rạp</h3>
+          <div class="bar-chart" id="chart-rap"></div>
+        </div>
+        <div class="chart-card">
+          <h3>Phim ăn khách</h3>
+          <div class="bar-chart" id="chart-phim"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="page-thanhpho" class="page">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Mã TP</th><th>Tên thành phố</th><th>Số rạp</th><th>Thao tác</th></tr></thead>
+          <tbody id="tb-thanhpho"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="page-rap" class="page">
+      <div class="filters">
+        <select class="filter-select" id="filter-rap-tp" onchange="loadRap()">
+          <option value="">Tất cả thành phố</option>
+        </select>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Mã rạp</th><th>Tên rạp</th><th>Địa chỉ</th><th>Thành phố</th><th>Số phòng</th><th>Thao tác</th></tr></thead>
+          <tbody id="tb-rap"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="page-phong" class="page">
+      <div class="filters">
+        <select class="filter-select" id="filter-phong-rap" onchange="loadPhong()">
+          <option value="">Tất cả rạp</option>
+        </select>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Mã phòng</th><th>Tên phòng</th><th>Rạp</th><th>Thành phố</th><th>Số ghế</th><th>Thao tác</th></tr></thead>
+          <tbody id="tb-phong"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="page-ghe" class="page">
+      <div class="filters">
+        <select class="filter-select" id="filter-ghe-phong" onchange="loadGhe()">
+          <option value="">Chọn phòng để xem ghế</option>
+        </select>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Mã ghế</th><th>Phòng</th><th>Rạp</th><th>Vị trí</th><th>Loại ghế</th><th>Thao tác</th></tr></thead>
+          <tbody id="tb-ghe"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="page-phim" class="page">
+      <div class="filters">
+        <input type="text" class="filter-input" placeholder="Tìm phim, đạo diễn..." id="search-phim" oninput="loadPhim()">
+        <select class="filter-select" id="filter-theloai" onchange="loadPhim()">
+          <option value="">Tất cả thể loại</option>
+          <option>Hành động</option><option>Viễn tưởng</option><option>Hài</option>
+          <option>Drama</option><option>Kinh dị</option><option>Hoạt hình</option>
+          <option>Tình cảm</option><option>Tài liệu</option>
+        </select>
+      </div>
+      <div class="movie-grid" id="movie-grid"></div>
+    </div>
+
+    <div id="page-suatchieu" class="page">
+      <div class="filters">
+        <input type="date" class="filter-input" id="filter-ngay" onchange="loadSuatChieu()">
+        <select class="filter-select" id="filter-sc-rap" onchange="filterSuatChieuByRap()">
+          <option value="">Tất cả rạp</option>
+        </select>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Mã suất</th><th>Phim</th><th>Phòng / Rạp</th><th>Ngày chiếu</th><th>Giờ bắt đầu</th><th>Giờ kết thúc</th><th>Hệ số giá</th><th>Đã bán</th><th>Thao tác</th></tr></thead>
+          <tbody id="tb-suatchieu"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="page-ve" class="page">
+      <div class="filters">
+        <select class="filter-select" id="filter-ve-tt" onchange="loadVe()">
+          <option value="">Tất cả trạng thái</option>
+          <option value="Đã đặt">Đã đặt</option>
+          <option value="Còn trống">Còn trống</option>
+          <option value="Đã hủy">Đã hủy</option>
+        </select>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Mã vé</th><th>Khách hàng</th><th>Phim</th><th>Suất / Phòng</th><th>Vị trí</th><th>Ngày đặt</th><th>Thành tiền</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+          <tbody id="tb-ve"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="page-khachhang" class="page">
+      <div class="filters">
+        <input type="text" class="filter-input" placeholder="Tìm tên, SĐT, email..." id="search-kh" oninput="loadKhachHang()">
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Mã KH</th><th>Họ tên</th><th>SĐT</th><th>Email</th><th>Điểm tích lũy</th><th>Tổng chi tiêu</th><th>Số vé</th><th>Thao tác</th></tr></thead>
+          <tbody id="tb-khachhang"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>

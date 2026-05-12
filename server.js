@@ -40,10 +40,16 @@ async function getPool() {
 
 // Helper: query wrapper
 async function query(queryStr, params = {}) {
-  const p = await getPool();
-  const req = p.request();
-  Object.entries(params).forEach(([k, v]) => req.input(k, v));
-  return req.query(queryStr);
+  try {
+    const p = await getPool();
+    const req = p.request();
+    Object.entries(params).forEach(([k, v]) => req.input(k, v));
+    return await req.query(queryStr);
+  } catch (error) {
+    console.error('\n❌ Lỗi thực thi SQL:', error.message);
+    console.error('👉 Câu lệnh gây lỗi:', queryStr);
+    throw error;
+  }
 }
 
 // =====================================================
@@ -51,7 +57,10 @@ async function query(queryStr, params = {}) {
 // =====================================================
 app.get('/api/thanhpho', async (req, res) => {
   try {
-    const result = await query('SELECT * FROM ThanhPho ORDER BY TenTP');
+    const result = await query(`
+      SELECT tp.*, (SELECT COUNT(*) FROM RapChieuPhim WHERE MaTP = tp.MaTP) AS SoRap
+      FROM ThanhPho tp ORDER BY tp.TenTP
+    `);
     res.json(result.recordset);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -75,6 +84,11 @@ app.put('/api/thanhpho/:id', async (req, res) => {
 
 app.delete('/api/thanhpho/:id', async (req, res) => {
   try {
+    // Kiểm tra xem thành phố có rạp chiếu phim nào không
+    const check = await query('SELECT COUNT(*) as count FROM RapChieuPhim WHERE MaTP=@MaTP', { MaTP: req.params.id });
+    if (check.recordset[0].count > 0) {
+      return res.status(400).json({ error: 'Không thể xóa thành phố vì đang có rạp chiếu phim trực thuộc!' });
+    }
     await query('DELETE FROM ThanhPho WHERE MaTP=@MaTP', { MaTP: req.params.id });
     res.json({ success: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -126,6 +140,11 @@ app.put('/api/rap/:id', async (req, res) => {
 
 app.delete('/api/rap/:id', async (req, res) => {
   try {
+    // Kiểm tra xem rạp có phòng chiếu nào không
+    const check = await query('SELECT COUNT(*) as count FROM Phong WHERE MaRap=@MaRap', { MaRap: req.params.id });
+    if (check.recordset[0].count > 0) {
+      return res.status(400).json({ error: 'Không thể xóa rạp vì đang có phòng chiếu. Vui lòng xóa phòng trước!' });
+    }
     await query('DELETE FROM RapChieuPhim WHERE MaRap=@MaRap', { MaRap: req.params.id });
     res.json({ success: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -169,6 +188,16 @@ app.put('/api/phong/:id', async (req, res) => {
 
 app.delete('/api/phong/:id', async (req, res) => {
   try {
+    // Kiểm tra xem phòng có suất chiếu hoặc ghế không
+    const checkSC = await query('SELECT COUNT(*) as count FROM SuatChieu WHERE MaPhong=@MaPhong', { MaPhong: req.params.id });
+    if (checkSC.recordset[0].count > 0) {
+      return res.status(400).json({ error: 'Không thể xóa phòng vì đang có lịch suất chiếu!' });
+    }
+    const checkGhe = await query('SELECT COUNT(*) as count FROM Ghe WHERE MaPhong=@MaPhong', { MaPhong: req.params.id });
+    if (checkGhe.recordset[0].count > 0) {
+      return res.status(400).json({ error: 'Không thể xóa phòng vì đang có dữ liệu ghế. Vui lòng xóa ghế trước!' });
+    }
+
     await query('DELETE FROM Phong WHERE MaPhong=@MaPhong', { MaPhong: req.params.id });
     res.json({ success: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -202,6 +231,15 @@ app.post('/api/ghe', async (req, res) => {
 
 app.delete('/api/ghe/:id', async (req, res) => {
   try {
+    // Kiểm tra xem ghế đã có khách đặt vé chưa
+    const check = await query(`
+      SELECT COUNT(*) as count FROM Ve v 
+      JOIN Ghe g ON v.MaPhong = g.MaPhong AND v.ViTri = g.ViTri 
+      WHERE g.MaGhe=@MaGhe
+    `, { MaGhe: req.params.id });
+    if (check.recordset[0].count > 0) {
+      return res.status(400).json({ error: 'Không thể xóa ghế vì đã có khách đặt vé tại vị trí này!' });
+    }
     await query('DELETE FROM Ghe WHERE MaGhe=@MaGhe', { MaGhe: req.params.id });
     res.json({ success: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -259,11 +297,11 @@ app.get('/api/phim/:id', async (req, res) => {
 });
 
 app.post('/api/phim', async (req, res) => {
-  const { MaPhim, TenPhim, DaoDien, QuocGia, TheLoai, ThoiLuong, NgayKhoiChieu, MoTa } = req.body;
+  const { MaPhim, TenPhim, DaoDien, QuocGia, TheLoai, ThoiLuong, NgayKhoiChieu, MoTa, HinhAnh } = req.body;
   try {
-    await query(`INSERT INTO Phim(MaPhim,TenPhim,DaoDien,QuocGia,ThoiLuong,NgayKhoiChieu,MoTa)
-      VALUES(@MaPhim,@TenPhim,@DaoDien,@QuocGia,@ThoiLuong,@NgayKhoiChieu,@MoTa)`,
-      { MaPhim, TenPhim, DaoDien, QuocGia, ThoiLuong: parseInt(ThoiLuong), NgayKhoiChieu, MoTa });
+    await query(`INSERT INTO Phim(MaPhim,TenPhim,DaoDien,QuocGia,ThoiLuong,NgayKhoiChieu,MoTa,HinhAnh)
+      VALUES(@MaPhim,@TenPhim,@DaoDien,@QuocGia,@ThoiLuong,@NgayKhoiChieu,@MoTa,@HinhAnh)`,
+      { MaPhim, TenPhim, DaoDien, QuocGia, ThoiLuong: parseInt(ThoiLuong), NgayKhoiChieu, MoTa, HinhAnh });
     
     if (Array.isArray(TheLoai) && TheLoai.length > 0) {
       for (const ma of TheLoai) {
@@ -275,12 +313,12 @@ app.post('/api/phim', async (req, res) => {
 });
 
 app.put('/api/phim/:id', async (req, res) => {
-  const { TenPhim, DaoDien, QuocGia, TheLoai, ThoiLuong, NgayKhoiChieu, MoTa } = req.body;
+  const { TenPhim, DaoDien, QuocGia, TheLoai, ThoiLuong, NgayKhoiChieu, MoTa, HinhAnh } = req.body;
   try {
     await query(`UPDATE Phim SET TenPhim=@TenPhim,DaoDien=@DaoDien,QuocGia=@QuocGia,
-      ThoiLuong=@ThoiLuong,NgayKhoiChieu=@NgayKhoiChieu,MoTa=@MoTa
+      ThoiLuong=@ThoiLuong,NgayKhoiChieu=@NgayKhoiChieu,MoTa=@MoTa,HinhAnh=@HinhAnh
       WHERE MaPhim=@MaPhim`,
-      { MaPhim: req.params.id, TenPhim, DaoDien, QuocGia, ThoiLuong: parseInt(ThoiLuong), NgayKhoiChieu, MoTa });
+      { MaPhim: req.params.id, TenPhim, DaoDien, QuocGia, ThoiLuong: parseInt(ThoiLuong), NgayKhoiChieu, MoTa, HinhAnh });
     
     await query('DELETE FROM Phim_TheLoai WHERE MaPhim=@MaPhim', { MaPhim: req.params.id });
     if (Array.isArray(TheLoai) && TheLoai.length > 0) {
@@ -294,6 +332,12 @@ app.put('/api/phim/:id', async (req, res) => {
 
 app.delete('/api/phim/:id', async (req, res) => {
   try {
+    // Kiểm tra xem phim có đang được xếp lịch chiếu không
+    const check = await query('SELECT COUNT(*) as count FROM SuatChieu WHERE MaPhim=@MaPhim', { MaPhim: req.params.id });
+    if (check.recordset[0].count > 0) {
+      return res.status(400).json({ error: 'Không thể xóa phim vì đang có suất chiếu. Vui lòng xóa suất chiếu của phim này trước!' });
+    }
+
     await query('DELETE FROM Phim_TheLoai WHERE MaPhim=@MaPhim', { MaPhim: req.params.id });
     await query('DELETE FROM Phim WHERE MaPhim=@MaPhim', { MaPhim: req.params.id });
     res.json({ success: true });
@@ -347,6 +391,11 @@ app.put('/api/suatchieu/:id', async (req, res) => {
 
 app.delete('/api/suatchieu/:id', async (req, res) => {
   try {
+    // Kiểm tra xem suất chiếu đã có người đặt vé chưa
+    const check = await query('SELECT COUNT(*) as count FROM Ve WHERE MaSchieu=@MaSchieu', { MaSchieu: req.params.id });
+    if (check.recordset[0].count > 0) {
+      return res.status(400).json({ error: 'Không thể xóa suất chiếu vì đã có khách đặt vé!' });
+    }
     await query('DELETE FROM SuatChieu WHERE MaSchieu=@MaSchieu', { MaSchieu: req.params.id });
     res.json({ success: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -356,15 +405,18 @@ app.delete('/api/suatchieu/:id', async (req, res) => {
 app.get('/api/suatchieu/:id/soghe', async (req, res) => {
   try {
     const result = await query(`
-      SELECT g.MaGhe, g.ViTri, g.LoaiGhe,
+      SELECT sc.MaPhong, g.MaGhe, g.ViTri, g.LoaiGhe,
         CASE WHEN v.MaVe IS NOT NULL THEN N'Đã đặt' ELSE N'Còn trống' END AS TrangThai,
-        DATEADD(MINUTE, pm.ThoiLuong, CAST(sc.ThoiGianBd AS DATETIME)) AS ThoiGianKt
+        kh.HoTen, kh.Sdt
       FROM SuatChieu sc
-      JOIN Phim pm ON pm.MaPhim=sc.MaPhim
-      JOIN Ghe g ON g.MaPhong=sc.MaPhong
-      LEFT JOIN Ve v ON v.MaSchieu=sc.MaSchieu AND v.MaPhong=g.MaPhong
-        AND v.ViTri=g.ViTri AND v.TrangThai=N'Đã đặt'
-      WHERE sc.MaSchieu=@MaSchieu ORDER BY g.ViTri
+      JOIN Ghe g ON g.MaPhong = sc.MaPhong
+      LEFT JOIN Ve v ON v.MaSchieu = sc.MaSchieu 
+        AND v.MaPhong = g.MaPhong 
+        AND v.ViTri = g.ViTri
+        AND v.TrangThai = N'Đã đặt'
+      LEFT JOIN KhachHang kh ON kh.MaKH = v.MaKH
+      WHERE sc.MaSchieu = @MaSchieu
+      ORDER BY g.ViTri
     `, { MaSchieu: req.params.id });
     res.json(result.recordset);
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -407,6 +459,11 @@ app.put('/api/khachhang/:id', async (req, res) => {
 
 app.delete('/api/khachhang/:id', async (req, res) => {
   try {
+    // Kiểm tra xem khách hàng có vé nào không
+    const check = await query('SELECT COUNT(*) as count FROM Ve WHERE MaKH=@MaKH', { MaKH: req.params.id });
+    if (check.recordset[0].count > 0) {
+      return res.status(400).json({ error: 'Không thể xóa khách hàng vì người này đã có lịch sử đặt vé!' });
+    }
     await query('DELETE FROM KhachHang WHERE MaKH=@MaKH', { MaKH: req.params.id });
     res.json({ success: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -420,7 +477,8 @@ app.get('/api/ve', async (req, res) => {
     const { maKH, maSchieu, trangThai } = req.query;
     let q = `
       SELECT v.*, kh.HoTen, kh.Sdt, pm.TenPhim, p.TenPhong, r.TenRap,
-        sc.NgayChieu, sc.ThoiGianBd, sc.ThoiGianKt, g.LoaiGhe
+        sc.NgayChieu, sc.ThoiGianBd, 
+        DATEADD(MINUTE, pm.ThoiLuong, CAST(sc.ThoiGianBd AS DATETIME)) AS ThoiGianKt, g.LoaiGhe
       FROM Ve v
       JOIN KhachHang kh ON kh.MaKH=v.MaKH
       JOIN SuatChieu sc ON sc.MaSchieu=v.MaSchieu
@@ -485,18 +543,13 @@ app.get('/api/thongke/tongquan', async (req, res) => {
 
 app.get('/api/thongke/doanhthu-theo-rap', async (req, res) => {
   try {
-    const result = await query(`
-      SELECT r.TenRap, tp.TenTP,
-        COUNT(v.MaVe) AS TongVe,
-        ISNULL(SUM(v.ThanhTien),0) AS DoanhThu
-      FROM RapChieuPhim r
-      JOIN ThanhPho tp ON tp.MaTP=r.MaTP
-      LEFT JOIN Phong p ON p.MaRap=r.MaRap
-      LEFT JOIN SuatChieu sc ON sc.MaPhong=p.MaPhong
-      LEFT JOIN Ve v ON v.MaSchieu=sc.MaSchieu AND v.TrangThai=N'Đã đặt'
-      GROUP BY r.MaRap, r.TenRap, tp.TenTP
-      ORDER BY DoanhThu DESC
-    `);
+    const { tuNgay, denNgay } = req.query;
+    const p = await getPool();
+    const reqSql = p.request();
+    if (tuNgay) reqSql.input('TuNgay', tuNgay);
+    if (denNgay) reqSql.input('DenNgay', denNgay);
+    
+    const result = await reqSql.execute('sp_DoanhThuTheoRap');
     res.json(result.recordset);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -504,13 +557,17 @@ app.get('/api/thongke/doanhthu-theo-rap', async (req, res) => {
 app.get('/api/thongke/phim-hot', async (req, res) => {
   try {
     const result = await query(`
-      SELECT TOP 6 pm.TenPhim, pm.TheLoai,
+      SELECT TOP 6 pm.TenPhim,
+        (SELECT STRING_AGG(tl.TenTheLoai, ', ') 
+         FROM Phim_TheLoai ptl 
+         JOIN TheLoai tl ON tl.MaTheLoai=ptl.MaTheLoai 
+         WHERE ptl.MaPhim=pm.MaPhim) AS TheLoai,
         COUNT(v.MaVe) AS SoVe,
         ISNULL(SUM(v.ThanhTien),0) AS DoanhThu
       FROM Phim pm
       LEFT JOIN SuatChieu sc ON sc.MaPhim=pm.MaPhim
       LEFT JOIN Ve v ON v.MaSchieu=sc.MaSchieu AND v.TrangThai=N'Đã đặt'
-      GROUP BY pm.MaPhim, pm.TenPhim, pm.TheLoai
+      GROUP BY pm.MaPhim, pm.TenPhim
       ORDER BY SoVe DESC
     `);
     res.json(result.recordset);
