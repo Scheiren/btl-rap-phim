@@ -93,11 +93,10 @@ export async function loadGhe() {
 
   let html = `
     <div class="seat-legend" style="justify-content:center; margin-bottom:24px; display:flex; flex-wrap:wrap; gap:16px;">
-      <span><span class="legend-dot" style="background:rgba(122,128,153,0.15); border:1px solid var(--muted)"></span> Thường</span>
-      <span><span class="legend-dot" style="background:rgba(201,168,76,0.2); border:1px solid var(--gold)"></span> VIP</span>
+      <span><span class="legend-dot" style="background:rgba(122,128,153,0.15); border:2px solid var(--muted)"></span> Thường</span>
+      <span><span class="legend-dot" style="background:rgba(201,168,76,0.2); border:2px solid var(--gold)"></span> VIP</span>
       <span style="color:var(--muted)">|</span>
-      <span><span class="legend-dot" style="background:transparent; border:2px solid var(--green)"></span> Còn trống</span>
-      <span><span class="legend-dot" style="background:transparent; border:2px solid var(--red)"></span> Đã đặt</span>
+      <span><span class="legend-dot" style="background:rgba(229,76,76,0.15); border:2px solid var(--red)"></span> Đã đặt</span>
     </div>
     <div class="seat-screen" style="width:60%; margin:0 auto 20px;"></div>
     <div class="seat-screen-label">— Màn hình —</div>
@@ -107,9 +106,10 @@ export async function loadGhe() {
     html += `<div class="seat-row"><div class="seat-row-label" style="font-size:14px; width:24px;">${row}</div>`;
     seats.sort((a,b) => a.ViTri.localeCompare(b.ViTri)).forEach(s => {
       const isBooked = s.TrangThai === 'Đã đặt';
-      const borderCol = isBooked ? 'var(--red)' : 'var(--green)';
-      const bgCol = s.LoaiGhe === 'VIP' ? 'rgba(201,168,76,0.2)' : 'rgba(122,128,153,0.15)';
-      const style = `background:${bgCol}; border: 2px solid ${borderCol}; color: var(--text);`;
+      const borderCol = isBooked ? 'var(--red)' : (s.LoaiGhe === 'VIP' ? 'var(--gold)' : 'var(--muted)');
+      const bgCol = isBooked ? 'rgba(229,76,76,0.15)' : (s.LoaiGhe === 'VIP' ? 'rgba(201,168,76,0.2)' : 'rgba(122,128,153,0.15)');
+      const textCol = isBooked ? 'var(--red)' : (s.LoaiGhe === 'VIP' ? 'var(--gold)' : 'var(--text)');
+      const style = `background:${bgCol}; border: 2px solid ${borderCol}; color: ${textCol};`;
       const safeData = esc(JSON.stringify(s));
       html += `<button class="seat seat-lg" style="${style}" title="${s.ViTri} — ${s.LoaiGhe} — ${s.TrangThai}" onclick='showSeatInfo(${safeData})'>${s.ViTri.slice(1)}</button>`;
     });
