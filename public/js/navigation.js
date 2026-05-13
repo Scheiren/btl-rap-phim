@@ -21,10 +21,6 @@ export function showPage(page) {
   addBtn.style.display = noAdd.includes(page) ? 'none' : 'flex';
   document.getElementById('add-label').textContent = getAddLabel(page);
 
-  // Hide search for some pages
-  const searchInput = document.getElementById('global-search');
-  searchInput.style.display = ['phim','khachhang'].includes(page) ? 'none' : 'flex';
-
   loadPageData(page);
 }
 
